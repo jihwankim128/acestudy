@@ -12,11 +12,23 @@ leads_to:                         # 이 지식이 쓰이는/심화되는 토픽
 related: []                       # 방향 없이 연관된 토픽
 sources:
   - https://example.com
-# ── 토픽 제안: 학습 중 나왔지만 토픽 풀에 없고, 따로 10~20분 다룰 가치가 있는 개념 ──
+# ── 퀴즈 (2개 이상): 세션 끝 확인 질문. 페이지에서 복습 카드가 된다 ──
+quiz:
+  - q: 페이지 캐시에 쓴 데이터는 언제 디스크에 반영되나?
+    a: dirty page 로 남아 있다가 커널 flush(writeback) 시점이나 fsync 호출 시 반영된다.
+    level: basic
+  - q: Kafka 가 fsync 를 매번 하지 않는데도 데이터 유실을 막는 방법은?
+    a: 복제(acks=all, min.insync.replicas)로 여러 브로커의 페이지 캐시에 둔다. 단일 노드 내구성 대신 복제로 내구성을 얻는다.
+    level: interview
+# ── 토픽 제안 (1개 이상, 필수): 학습 중 나왔지만 토픽 풀에 없고 따로 10~20분 다룰 가치가 있는 개념 ──
 suggest:
-  - title: 가상 스레드(Virtual Thread)
+  - title: io_uring
     category: os
-    why: 스레드 풀 크기 고민을 바꾸는 JDK 21 모델. 이번 토픽 범위를 넘어 별도 학습 필요
+    why: epoll 이후의 비동기 I/O 모델. 페이지 캐시 우회(O_DIRECT)와 함께 볼 가치
+  - title: 분산 합의(Raft)
+    category: dist                # 기존에 없는 카테고리면
+    category_name: 분산 시스템      # 이름도 함께
+    why: 복제된 로그의 일관성 문제. WAL 이 여러 노드로 가면 필요해짐
 ---
 
 ## 한 줄 요약

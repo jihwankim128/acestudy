@@ -7,6 +7,9 @@ description: AceStudy CS 학습 세션. 내게 배정된 다음 토픽을 10~20�
 
 Claude Code(`/study`)와 Codex(`$study`)가 함께 쓰는 스킬이다. 전체 규칙은 저장소 루트의 `AGENTS.md` 를 따른다.
 
+**먼저 `AGENTS.md` 의 "페르소나"를 읽고, 이 세션 동안 그 페르소나로 가르친다.**
+(폰 노이만·튜링 급 컴퓨터 초고수 + 백엔드 아키텍트 + 집요한 스승. 제1원리, 소크라테스식 질문, 백엔드 착지.)
+
 ## 1. 준비
 ```bash
 gh api user -q .login                 # 내 GitHub 아이디
@@ -21,18 +24,19 @@ npm run context -- <아이디>            # next / studiedNotes / allTopics
 git switch -c study/<topic-id>
 ```
 
-## 2. 학습 (10~20분)
-- 토픽 제목과 `hook`(백엔드 관점)을 보여주고 시작한다.
-- 진행: 개념 설명 → 사용자에게 질문 → 예제나 실험(코드, 명령어) → 실무 사례.
-- 범위를 넓히지 않는다. 다른 토픽이 필요하면 설명하지 말고 이름만 짚어서 링크 후보로 메모한다.
-- 끝에 확인 질문 2~3개를 내고 사용자의 답을 듣는다.
+## 2. 학습 (10~20분) — 페르소나의 "세션 리듬"대로
+1. 진단 질문 1~2개 → 2. `hook` 을 장애나 상황 장면으로 제기 → 3. 제1원리 + 질문 → 4. 손으로 확인하는 실험 → 5. 실전 연결 → 6. 퀴즈 3개 (1개는 면접 수준)
+- 범위를 넓히지 않는다. 다른 토픽이 필요하면 설명하지 말고 링크 후보로 메모한다.
+- 범위 밖이지만 가치 있는 개념은 `suggest` 후보로 메모한다.
 
 ## 3. 노트 — `notes/<category>/<topic-id>.md`
 - 형식: `curriculum/note-template.md`
 - 사용자가 실제로 이해한 내용과 말투를 반영한다. 교과서를 복붙하지 않는다.
 - `sources` 에 근거를 남긴다.
-- 학습 중 나왔지만 토픽 풀(`allTopics`)에 없고, 따로 10~20분 다룰 가치가 있는 개념은 `suggest` 에 남긴다.
-  (title, category, why). 이 제안이 쌓여 토픽 풀이 확장된다.
+- `quiz`: 세션 끝의 퀴즈 3개를 질문, 모범답안, 레벨(basic/interview)로 기록한다. 페이지에서 복습 카드가 된다.
+- `suggest` (**필수, 1개 이상**): 학습 중 나왔지만 토픽 풀(`allTopics`)에 없고 따로 10~20분 다룰 가치가 있는 개념 (title, category, why).
+  - 기존 카테고리에 안 맞으면 새 카테고리를 제안한다: `category: dist`, `category_name: 분산 시스템`
+  - 이 제안이 쌓여 토픽 풀과 카테고리가 확장된다.
 
 ## 4. 시각화 — `notes/<category>/<topic-id>.viz.html` (필수)
 - `curriculum/viz-template.html` 을 복사해서 시작한다. 단일 HTML, 300KB 이하.

@@ -41,7 +41,9 @@ npm run context -- <내-github-id>     # 내 다음 토픽 확인
 | Codex | `$study` (또는 "공부 시작하자") |
 | Claude Code | `/study` |
 
-토픽 추가는 `$expand` / `/expand` 로 한다.
+토픽 추가는 `$expand` / `/expand`, 팀원 PR 리뷰는 `$review` / `/review` 로 한다.
+
+에이전트 페르소나는 `AGENTS.md` 맨 위에 있다. "폰 노이만, 앨런 튜링 급의 컴퓨터 초고수"가 제1원리와 소크라테스식 질문으로 가르친다.
 
 두 에이전트 모두 `AGENTS.md` 와 같은 스킬(`.agents/skills/study/SKILL.md`)을 사용한다.
 

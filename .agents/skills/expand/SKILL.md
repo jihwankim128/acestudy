@@ -5,7 +5,7 @@ description: AceStudy 토픽 풀 확장. 노트에 쌓인 토픽 제안(suggest)
 
 # expand — 토픽 풀 확장
 
-Claude Code(`/expand`)와 Codex(`$expand`)가 함께 쓴다. 규칙은 `AGENTS.md` 를 따른다.
+Claude Code(`/expand`)와 Codex(`$expand`)가 함께 쓴다. 규칙은 `AGENTS.md` 를 따르고, `AGENTS.md` 의 페르소나 시선으로 "백엔드 개발자에게 지금 빠진 지식이 무엇인가"를 판단한다.
 
 ## 1. 근거 수집
 ```bash
@@ -25,7 +25,14 @@ npm run context -- <내 아이디>
 - 한 번에 팀원 수(3)의 배수로 추가하면 세션이 깔끔하게 나뉜다.
 
 ### 1단계: 기본 CS 보강
-카테고리: `arch`, `os`, `net`, `ds`, `db`. 제안이 들어온 카테고리에 추가한다.
+기존 카테고리(`arch`, `os`, `net`, `ds`, `db`)에 추가한다.
+
+### 새 카테고리
+`suggestions` 중 기존 카테고리에 없는 `category` 가 있으면 새 카테고리를 만든다.
+- `categories` 에 `{ id, name, topics: [...] }` 를 추가한다.
+  - 예: `dist` 분산 시스템, `concurrency` 동시성, `infra` 인프라/클라우드, `sec` 보안, `observability` 관측성
+- 새 카테고리는 처음 만들 때 토픽을 팀원 수(3)의 배수로 채운다. 그래야 세션 하나를 온전히 구성한다.
+- 페이지 색은 `site/style.css` 의 `--c-<id>` 에 추가한다. 없으면 기본 색으로 표시된다.
 
 ### 2단계: 실전 문제 (`practiceReady` 일 때)
 `practice` 카테고리를 만들고(없으면 `categories` 끝에 `{ id: practice, name: 실전 문제 }` 추가) 실제 장애·성능·설계 시나리오를 토픽으로 만든다.

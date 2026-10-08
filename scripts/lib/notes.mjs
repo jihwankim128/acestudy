@@ -42,6 +42,7 @@ export async function loadNotes() {
         related: [...new Set([...(meta.related ?? []), ...wikiLinks])].filter((id) => !directed.has(id)),
         sources: meta.sources ?? [],
         suggest: meta.suggest ?? [],
+        quiz: meta.quiz ?? [],
         viz: existsSync(vizPath) ? relative(ROOT, vizPath) : null,
         body,
       });
@@ -99,6 +100,7 @@ export function buildGraph({ categories }, schedule, notes) {
 export function validate(graph, notes) {
   const errors = [];
   const byId = new Map(graph.topics.map((t) => [t.id, t]));
+  const knownCategories = new Set(graph.topics.map((t) => t.category));
   for (const n of notes) {
     const t = byId.get(n.topic);
     if (!t) { errors.push(`${n.path}: topics.yaml 에 없는 topic '${n.topic}'`); continue; }
@@ -106,9 +108,13 @@ export function validate(graph, notes) {
     if (t.owner && n.author !== t.owner) errors.push(`${n.path}: 담당자는 ${t.owner} (author: ${n.author})`);
     if (!n.viz) errors.push(`${n.path}: 시각화 파일 ${n.path.replace(/\.md$/, '.viz.html')} 필요`);
     if (!n.prerequisites.length && !n.leads_to.length) errors.push(`${n.path}: prerequisites 또는 leads_to 링크가 최소 1개 필요`);
+    if (!n.suggest.length) errors.push(`${n.path}: suggest(새 토픽 제안) 최소 1개 필요`);
     for (const sg of n.suggest) {
       if (!sg?.title || !sg?.category || !sg?.why) errors.push(`${n.path}: suggest 항목은 title, category, why 가 필요`);
+      else if (!knownCategories.has(sg.category) && !sg.category_name) errors.push(`${n.path}: 새 카테고리 '${sg.category}' 제안에는 category_name 필요`);
     }
+    if (n.quiz.length < 2) errors.push(`${n.path}: quiz 최소 2개 필요`);
+    for (const q of n.quiz) if (!q?.q || !q?.a) errors.push(`${n.path}: quiz 항목은 q, a 가 필요`);
     for (const key of LINK_KEYS) {
       for (const id of n[key]) if (!byId.has(id)) errors.push(`${n.path}: ${key} 의 '${id}' 는 없는 토픽`);
     }
@@ -125,7 +131,7 @@ export function collectSuggestions({ categories }, notes) {
     for (const sg of n.suggest ?? []) {
       const key = norm(sg.title);
       if (!sg.title || existing.has(key)) continue;
-      const entry = byTitle.get(key) ?? { title: sg.title, category: sg.category, reasons: [], from: [] };
+      const entry = byTitle.get(key) ?? { title: sg.title, category: sg.category, categoryName: sg.category_name ?? null, reasons: [], from: [] };
       entry.reasons.push(sg.why);
       entry.from.push(n.topic);
       byTitle.set(key, entry);
