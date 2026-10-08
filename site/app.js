@@ -93,8 +93,14 @@ addEventListener('resize', () => fg && renderGraph());
 // ── 배정표 ──
 function renderSchedule() {
   const { members, sessions } = schedule;
+  const progress = members.map((m) => {
+    const mine = graph.topics.filter((t) => t.owner === m);
+    const done = mine.filter((t) => t.studied).length;
+    return `<div class="member"><b>${esc(m)}</b><span class="bar"><i style="width:${mine.length ? (done / mine.length) * 100 : 0}%"></i></span><span class="muted">${done}/${mine.length}</span></div>`;
+  }).join('');
   $('#schedule-view').innerHTML = `<h1>배정표</h1>
     <p class="muted">세션마다 같은 카테고리 안에서 서로 다른 토픽을 랜덤 배정 (토픽당 10~20분)</p>
+    <div class="members">${progress}</div>
     <table><thead><tr><th>#</th><th>카테고리</th>${members.map((m) => `<th>${esc(m)}</th>`).join('')}</tr></thead>
     <tbody>${sessions.map((s) => `<tr><td>${s.session}</td>
       <td><span class="dot" style="--c:${catColor(s.category)}"></span>${esc(graph.categories.find((c) => c.id === s.category)?.name ?? '혼합')}</td>
@@ -124,6 +130,9 @@ function renderTopic(id) {
     <blockquote>백엔드 관점 — ${esc(t.hook)}</blockquote>
     ${n?.vizUrl ? `<figure class="viz"><iframe src="${n.vizUrl}" sandbox="allow-scripts" loading="lazy" title="${esc(t.title)} 시각화"></iframe></figure>` : ''}
     ${n ? marked.parse(wiki(n.body)) : '<p class="muted">아직 노트가 없어요. 담당자가 <code>/study</code> 로 학습하면 채워집니다.</p>'}
+    ${n?.quiz?.length ? `<h3>복습 퀴즈</h3>${n.quiz.map((q) => `<details class="quiz">
+      <summary>${q.level === 'interview' ? '<span class="tag">면접</span>' : ''}${esc(q.q)}</summary>
+      <p>${esc(q.a)}</p></details>`).join('')}` : ''}
     ${n?.sources?.length ? `<h3>출처</h3><ul>${n.sources.map((s) => `<li><a href="${esc(s)}" target="_blank" rel="noopener">${esc(s)}</a></li>`).join('')}</ul>` : ''}`;
   renderLinks(id);
 }
@@ -148,7 +157,7 @@ function route() {
   document.querySelectorAll('.views a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
   document.querySelectorAll('.tree .file').forEach((a) => a.classList.toggle('active', a.dataset.id === arg));
   if (view === 'topic') renderTopic(decodeURIComponent(arg));
-  else if (view === 'schedule') renderSchedule();
+  else if (view === 'schedule') { $('#links').innerHTML = ''; renderSchedule(); }
   else { $('#links').innerHTML = `<h4>범례</h4><p class="muted small">노드 크기 = 연결 수<br>채워진 노드 = 학습 완료<br>빈 노드 = 학습 전</p>`; requestAnimationFrame(renderGraph); }
 }
 addEventListener('hashchange', route);
