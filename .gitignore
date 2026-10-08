@@ -6,3 +6,4 @@ site/data/
 .DS_Store
 .vercel
 .env*
+.wrangler/
