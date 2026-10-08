@@ -3,7 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "assign": "node scripts/assign.mjs",
     "build": "node scripts/build-index.mjs",
+    "check": "node scripts/build-index.mjs --check",
+    "context": "node scripts/context.mjs",
     "dev": "npm run build && wrangler dev",
     "deploy": "npm run build && wrangler deploy",
     "sync": "node scripts/sync-firestore.mjs"

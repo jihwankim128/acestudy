@@ -1,68 +1,67 @@
 # AceStudy
 
-AI 에이전트와 함께 CS를 학습하고, 그 기록을 팀이 함께 쌓아가는 스터디 저장소.
+백엔드 개발자 3명이 각자 AI 에이전트(Codex / Claude Code)와 CS를 학습하고, 학습 결과를 **하나의 지식 그래프**로 쌓아가는 스터디.
 
-## 어떻게 돌아가나
+## 흐름
 
 ```
- AI가 학습 범위 생성          각자 에이전트와 학습          GitHub push (main)
- curriculum/roadmap.yaml ──▶  /study  ──▶  notes/<id>/*.md ──▶  GitHub Actions
-                                  ▲                               │
-                                  │                     ┌─────────┴─────────┐
-                     gap / 기존 노트 (RAG)              ▼                   ▼
-                                  │              Firestore (DB)     Cloudflare (페이지 + /api)
-                                  └──────────────────────────────────────────┘
+ topics.yaml ──(npm run assign)──▶ schedule.yaml      카테고리 안에서 랜덤 배정, 토픽 중복 없음
+                                       │
+              각자 에이전트 /study ◀──────┘
+                 │  ① DB에 쌓인 노트 조회 (npm run context)
+                 │  ② 10~20분 학습
+                 │  ③ 노트 + 시각화 작성
+                 │  ④ 선행/후속 링크 매핑 → 그래프에 연결
+                 ▼
+              Pull Request ──(CI: npm run check)──▶ merge
+                                                      │
+                               ┌──────────────────────┴──────────────────────┐
+                               ▼                                             ▼
+                       Firestore (notes/topics/edges)          Cloudflare 페이지 (그래프 · 노트 · 시각화)
 ```
 
-1. **범위**: AI가 뽑은 학습 범위가 `curriculum/roadmap.yaml` 에 있다. (트랙 → 토픽 → 핵심 개념)
-2. **학습**: 각자 에이전트에서 `/study` 를 실행하면, 아직 아무도 안 했거나 빠진 개념이 있는 토픽을 골라 함께 학습한다.
-3. **기록**: 결과를 `notes/<github-id>/<topic-id>.md` 로 남기고 `main` 에 push한다.
-4. **축적**: push하면 자동으로 Firestore(DB)에 동기화되고 Cloudflare 페이지에 반영된다.
-5. **보완**: 에이전트는 쌓인 노트와 커버리지(`/api/gaps`)를 보고 부족한 개념을 다음 학습으로 제안한다.
+- **범위(1단계)**: 컴퓨터 구조 · 운영체제 · 네트워크 · 자료구조 · 데이터베이스. 66개 토픽을 백엔드 관점(`hook`)으로 정리했다.
+- **배정**: 한 세션에서는 3명이 같은 카테고리의 서로 다른 토픽을 하나씩 맡는다. 총 22세션이다. → [`curriculum/schedule.yaml`](curriculum/schedule.yaml)
+- **그래프**: 노트마다 `prerequisites` / `leads_to` / `related` 링크와 본문의 `[[topic-id]]` 가 엣지가 된다. 아직 학습하지 않은 토픽도 노드로 미리 깔아둔다.
+- **2단계**: 실제 문제(장애, 성능, 설계) 기반 심화. 그래프를 따라 필요한 기본 지식을 찾고, 반대로 기본 지식이 쓰인 사례로도 이동한다.
 
-**로드맵**: 1단계 기본 CS(자료구조·알고리즘·OS·네트워크·DB·컴퓨터구조·보안·설계) → 2단계 실무/프로젝트 시나리오.
-
-## 팀원 세팅 (5분)
+## 팀원 시작하기
 
 ```bash
 git clone https://github.com/jihwankim128/acestudy.git
-cd acestudy
-npm install
-npm run build        # 현재 커버리지/gap 확인
+cd acestudy && npm install
+npm run context -- <내-github-id>     # 내 다음 토픽 확인
 ```
 
-그다음 Claude Code(또는 다른 에이전트)를 이 폴더에서 열고:
+에이전트에서 학습 시작:
 
-```
-/study               # 다음 토픽 자동 추천 후 학습
-/study os.sync       # 특정 토픽 지정
-```
-
-- Claude Code는 `CLAUDE.md` → `AGENTS.md` 를 자동으로 읽는다.
-- 다른 에이전트(Codex, Cursor 등)는 `AGENTS.md` 를 읽게 하면 된다.
-- 규칙: 자기 폴더(`notes/<내 아이디>/`)만 수정, 커밋은 `study(<topic-id>): 요약`.
-
-## 구조
-
-| 경로 | 역할 |
+| 에이전트 | 실행 |
 |---|---|
-| `curriculum/roadmap.yaml` | 학습 범위 |
-| `notes/<github-id>/` | 각자 학습 노트 (`notes/_template/note.md` 참고) |
-| `scripts/build-index.mjs` | 노트 → 인덱스/커버리지/gap JSON |
-| `scripts/sync-firestore.mjs` | 노트 → Firestore |
-| `site/`, `worker/` | Cloudflare Worker로 배포되는 페이지와 `/api/*` |
-| `.github/workflows/deploy.yml` | push 시 빌드 → Firestore 동기화 → 배포 |
+| Codex | `$study` (또는 "공부 시작하자") |
+| Claude Code | `/study` |
 
-## API
+두 에이전트 모두 `AGENTS.md` 와 같은 스킬(`.agents/skills/study/SKILL.md`)을 사용한다.
 
-- `GET /api/gaps` — 아무도 안 한 토픽, 빠진 개념
-- `GET /api/coverage` — 토픽별 커버리지
-- `GET /api/notes` — 전체 노트
+## 노트 = 옵시디언 vault
+
+`notes/` 폴더를 옵시디언에서 vault로 열면 `[[topic-id]]` 링크가 그대로 그래프로 보인다.
+노트마다 `<topic-id>.viz.html`(단계별 애니메이션 시각화)이 함께 있고, 웹 페이지에서는 노트 화면에 임베드된다.
+
+## 명령어
+
+| 명령 | 설명 |
+|---|---|
+| `npm run context -- <id>` | 내 다음 토픽 + DB에 쌓인 노트 (에이전트용) |
+| `npm run check` | 노트 검증: 담당자, 토픽, 링크, 시각화 |
+| `npm run dev` | 로컬 페이지 (http://localhost:8787) |
+| `npm run assign` | 토픽 추가 후 새 토픽만 배정 |
+
+API: `/api/graph`, `/api/notes`, `/api/schedule`
 
 ## 관리자 설정 (GitHub Secrets)
 
 | Secret | 값 |
 |---|---|
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API 토큰 (Workers 편집 권한) |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 계정 ID |
-| `FIREBASE_SERVICE_ACCOUNT` | Firebase 서비스 계정 JSON 전체 |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API 토큰 (Edit Cloudflare Workers 템플릿) |
+| `CLOUDFLARE_ACCOUNT_ID` | `5a4c89337fcfbe7c371fe2f62e2acafb` |
+| `FIREBASE_SERVICE_ACCOUNT` | Firebase `acestudy-cs` 서비스 계정 키 JSON 전체 |

@@ -1,0 +1,84 @@
+<!doctype html>
+<!--
+  AceStudy 시각화 템플릿 — notes/<category>/<topic-id>.viz.html 로 복사해서 사용.
+  규칙
+  - 단일 HTML 파일 (CSS/JS 인라인). 외부 스크립트는 cdn.jsdelivr.net 만, 버전 고정.
+  - 300KB 이하. 페이지에서 sandbox iframe(스크립트만 허용)으로 열린다 → localStorage, 쿠키, 팝업은 동작하지 않음.
+  - "단계(step)"로 개념이 진행되는 과정을 보여준다. 재생/일시정지/이전/다음 + 단계별 설명 한 줄.
+  - 다크/라이트 모두 보이도록 아래 색 토큰을 쓴다.
+  아래 예시는 "스레드는 코드·힙을 공유하고 스택만 따로 가진다"를 단계별로 보여준다. STEPS 와 draw() 만 바꾸면 된다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --bg:#1e1e1e; --panel:#262626; --fg:#dadada; --muted:#8f8f8f; --line:#3a3a3a; --accent:#a882ff; --ok:#98c379; --warn:#e5c07b; }
+  @media (prefers-color-scheme: light) { :root { --bg:#fff; --panel:#f6f6f6; --fg:#222; --muted:#6b6b6b; --line:#ddd; --accent:#7c4dff; --ok:#4b9a2a; --warn:#c18401; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 Inter, system-ui, sans-serif; padding:16px; }
+  svg { width:100%; height:auto; display:block; }
+  .bar { display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  button { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:4px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .caption { flex:1; min-width:200px; color:var(--muted); }
+  .step { font-variant-numeric: tabular-nums; color:var(--accent); }
+  text { fill: var(--fg); font-size: 13px; }
+  .muted { fill: var(--muted); font-size: 11px; }
+  rect, circle, path { transition: all .5s ease; }
+</style>
+</head>
+<body>
+<svg id="stage" viewBox="0 0 600 260"></svg>
+<div class="bar">
+  <button id="prev">◀</button><button id="play">❚❚</button><button id="next">▶</button>
+  <span class="step" id="idx"></span><span class="caption" id="caption"></span>
+</div>
+<script>
+const STEPS = [
+  { caption: '프로세스: 코드, 데이터, 힙, 스택을 가진 독립된 주소 공간', threads: 1, active: -1 },
+  { caption: '스레드를 만들면 스택(과 레지스터)만 새로 생긴다', threads: 2, active: -1 },
+  { caption: '스레드는 같은 힙을 공유한다 → 공유 객체에 동시 접근 가능', threads: 3, active: 0 },
+  { caption: '그래서 공유 자원에는 동기화(뮤텍스, 세마포어)가 필요하다', threads: 3, active: 1 },
+];
+
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const stage = document.getElementById('stage');
+
+function draw(s) {
+  const shared = ['코드', '데이터', '힙'];
+  let html = `<rect x="10" y="10" width="580" height="240" rx="10" fill="none" stroke="${css('--line')}"/>
+    <text x="24" y="34">프로세스</text>`;
+  shared.forEach((name, i) => {
+    const hot = name === '힙' && s.active >= 0;
+    html += `<rect x="24" y="${50 + i * 62}" width="200" height="50" rx="6" fill="${css('--panel')}" stroke="${hot ? css('--warn') : css('--line')}"/>
+      <text x="40" y="${80 + i * 62}">${name}</text><text class="muted" x="150" y="${80 + i * 62}">공유</text>`;
+  });
+  for (let t = 0; t < s.threads; t++) {
+    const x = 270 + t * 105;
+    html += `<rect x="${x}" y="50" width="90" height="174" rx="6" fill="${css('--panel')}" stroke="${css('--accent')}"/>
+      <text x="${x + 12}" y="74">스레드 ${t + 1}</text><text class="muted" x="${x + 12}" y="94">스택</text><text class="muted" x="${x + 12}" y="112">레지스터</text>`;
+    if (s.active >= 0) {
+      html += `<path d="M ${x} ${170} C ${x - 30} 170, 260 180, 224 ${175}" fill="none" stroke="${css('--warn')}" stroke-dasharray="4 3"/>`;
+    }
+  }
+  stage.innerHTML = html;
+}
+
+// ── 공통 컨트롤 (수정 불필요) ──
+let i = 0, timer = null;
+const show = () => {
+  draw(STEPS[i]);
+  document.getElementById('caption').textContent = STEPS[i].caption;
+  document.getElementById('idx').textContent = `${i + 1}/${STEPS.length}`;
+};
+const go = (d) => { i = (i + d + STEPS.length) % STEPS.length; show(); };
+const play = () => { timer = setInterval(() => go(1), 2200); document.getElementById('play').textContent = '❚❚'; };
+const pause = () => { clearInterval(timer); timer = null; document.getElementById('play').textContent = '▶︎'; };
+document.getElementById('prev').onclick = () => { pause(); go(-1); };
+document.getElementById('next').onclick = () => { pause(); go(1); };
+document.getElementById('play').onclick = () => (timer ? pause() : play());
+show(); play();
+</script>
+</body>
+</html>

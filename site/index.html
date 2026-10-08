@@ -4,29 +4,35 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AceStudy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <header>
-    <h1>AceStudy</h1>
-    <p class="sub">AI와 함께 쌓아가는 CS 스터디 기록</p>
-    <div id="summary" class="summary"></div>
-  </header>
-  <main>
-    <section>
-      <h2>커버리지</h2>
-      <div id="tracks" class="tracks"></div>
+  <aside class="sidebar">
+    <div class="vault">
+      <span class="logo">◆</span> AceStudy
+      <span id="progress" class="progress"></span>
+    </div>
+    <nav class="views">
+      <a href="#/graph" data-view="graph">그래프</a>
+      <a href="#/schedule" data-view="schedule">배정표</a>
+    </nav>
+    <div id="tree" class="tree"></div>
+  </aside>
+
+  <main class="workspace">
+    <section id="graph-view" class="view"><div id="graph"></div>
+      <div class="legend"><span><i class="solid"></i>선행 → 후속</span><span><i class="dash"></i>관련</span><span><i class="hollow"></i>학습 전</span></div>
     </section>
-    <section>
-      <h2>최근 노트</h2>
-      <ul id="notes" class="notes"></ul>
-    </section>
+    <section id="schedule-view" class="view doc"></section>
+    <section id="note-view" class="view doc"></section>
   </main>
-  <dialog id="viewer">
-    <form method="dialog"><button aria-label="닫기">✕</button></form>
-    <article id="note-body"></article>
-  </dialog>
+
+  <aside id="links" class="links"></aside>
+
   <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/force-graph@1.43.5/dist/force-graph.min.js"></script>
   <script type="module" src="/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,6 @@
+# 팀원(GitHub 아이디)과 랜덤 배정 시드. 시드를 바꾸지 않으면 배정은 항상 같다.
+members:
+  - jihwankim128
+  - simhokyung
+  - JYL35
+seed: acestudy-2026

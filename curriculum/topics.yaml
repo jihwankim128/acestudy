@@ -1,0 +1,90 @@
+# 학습 토픽 풀 — 토픽 하나 = 10~20분 학습 분량.
+# 순서·선행관계는 두지 않는다. 배정은 scripts/assign.mjs 가 카테고리 안에서 랜덤으로 한다.
+# 선행/후속 관계는 학습하면서 각 노트가 직접 링크로 쌓는다.
+# hook: 백엔드 개발자 관점에서 이 토픽이 왜 중요한지 (학습 출발점)
+categories:
+  - id: arch
+    name: 컴퓨터 구조
+    topics:
+      - { id: arch.number-representation, title: 정수와 부동소수점 표현, hook: 금액 계산에 double을 쓰면 안 되는 이유 }
+      - { id: arch.endian-encoding, title: 엔디언과 문자 인코딩, hook: 바이너리 프로토콜 파싱과 한글 깨짐 }
+      - { id: arch.cpu-execution, title: CPU 명령어 실행과 클럭, hook: CPU 사용률 100%가 의미하는 것 }
+      - { id: arch.pipeline-branch, title: 파이프라이닝과 분기 예측, hook: 같은 코드가 데이터 순서에 따라 느려지는 이유 }
+      - { id: arch.memory-hierarchy, title: 메모리 계층과 지연 시간, hook: 캐시 레이어를 두는 근거가 되는 숫자들 }
+      - { id: arch.cpu-cache, title: CPU 캐시와 캐시 라인, hook: 멀티스레드 카운터가 느려지는 false sharing }
+      - { id: arch.memory-visibility, title: 멀티코어와 메모리 가시성, hook: volatile과 원자성/가시성의 차이 }
+      - { id: arch.interrupt-dma, title: 인터럽트와 DMA, hook: 네트워크 패킷이 애플리케이션까지 오는 경로 }
+      - { id: arch.storage-device, title: HDD·SSD와 순차/랜덤 I/O, hook: DB가 순차 쓰기(WAL)를 선호하는 이유 }
+
+  - id: os
+    name: 운영체제
+    topics:
+      - { id: os.process, title: 프로세스와 메모리 레이아웃, hook: JVM 프로세스의 힙/스택과 OOM }
+      - { id: os.thread, title: 스레드와 스레드 모델, hook: 톰캣 스레드 풀 크기는 어떻게 정할까 }
+      - { id: os.context-switch, title: 컨텍스트 스위칭, hook: 스레드를 늘렸는데 처리량이 떨어지는 이유 }
+      - { id: os.scheduling, title: CPU 스케줄링, hook: 컨테이너 CPU limit과 throttling }
+      - { id: os.syscall, title: 시스템 콜과 유저/커널 모드, hook: 버퍼링 I/O가 빠른 이유 }
+      - { id: os.sync-primitive, title: 뮤텍스·세마포어·모니터, hook: 커넥션 풀은 사실 세마포어다 }
+      - { id: os.race-atomic, title: 경쟁 상태와 CAS, hook: 동시 요청에서 재고가 음수가 되는 버그 }
+      - { id: os.deadlock, title: 데드락, hook: 락 획득 순서로 데드락 피하기 }
+      - { id: os.virtual-memory, title: 가상 메모리와 페이징, hook: RSS와 VSZ가 다른 이유 }
+      - { id: os.page-replacement, title: 페이지 교체·스와핑·OOM Killer, hook: 컨테이너가 OOMKilled 되는 과정 }
+      - { id: os.file-descriptor, title: 파일 디스크립터와 inode, hook: Too many open files 장애 }
+      - { id: os.page-cache, title: 페이지 캐시와 fsync, hook: Kafka가 빠른 이유와 데이터 유실 위험 }
+      - { id: os.io-model, title: 블로킹/논블로킹과 epoll, hook: Netty·Node.js 이벤트 루프의 기반 }
+      - { id: os.signal-ipc, title: 시그널과 IPC, hook: SIGTERM과 graceful shutdown }
+      - { id: os.container, title: namespace와 cgroup, hook: 도커 컨테이너는 결국 프로세스다 }
+
+  - id: net
+    name: 네트워크
+    topics:
+      - { id: net.layers, title: 계층 모델과 캡슐화, hook: 장애 원인을 계층별로 좁혀가기 }
+      - { id: net.ip-subnet, title: IP·서브넷·NAT, hook: VPC와 서브넷 설계 }
+      - { id: net.tcp-handshake, title: TCP 연결 수립과 종료, hook: TIME_WAIT 소켓 폭증 }
+      - { id: net.tcp-control, title: TCP 흐름 제어와 혼잡 제어, hook: 대역폭은 남는데 전송이 느린 이유 }
+      - { id: net.udp, title: UDP와 TCP 선택, hook: DNS와 QUIC이 UDP를 쓰는 이유 }
+      - { id: net.socket, title: 소켓과 포트, hook: ephemeral port 고갈 }
+      - { id: net.dns, title: DNS 조회와 캐싱, hook: 배포 후 일부 사용자만 옛 서버로 가는 이유 }
+      - { id: net.http-semantics, title: HTTP 메서드·상태 코드·멱등성, hook: 재시도해도 안전한 API 설계 }
+      - { id: net.http-versions, title: HTTP/1.1·2·3, hook: 커넥션 재사용과 HOL blocking }
+      - { id: net.http-caching, title: HTTP 캐싱과 CDN, hook: Cache-Control 실수로 개인정보가 캐시되는 사고 }
+      - { id: net.tls, title: HTTPS와 TLS 핸드셰이크, hook: 인증서 만료 장애와 TLS 종료 위치 }
+      - { id: net.session-token, title: 쿠키·세션·토큰, hook: 서버를 늘렸더니 로그인이 풀리는 문제 }
+      - { id: net.cors, title: SOP와 CORS, hook: 프론트에서만 나는 CORS 에러의 정체 }
+      - { id: net.load-balancer, title: 로드밸런서와 리버스 프록시, hook: L4/L7 선택과 헬스 체크 }
+      - { id: net.timeout-retry, title: 타임아웃·재시도·백오프, hook: 외부 API 장애가 우리 서버로 전파되는 과정 }
+
+  - id: ds
+    name: 자료구조
+    topics:
+      - { id: ds.complexity, title: 시간 복잡도와 상환 분석, hook: O(1)인데 가끔 느린 연산 }
+      - { id: ds.dynamic-array, title: 배열과 동적 배열, hook: ArrayList 초기 용량과 리사이징 비용 }
+      - { id: ds.linked-list, title: 연결 리스트, hook: LinkedList가 실제로는 느린 이유 }
+      - { id: ds.stack-queue, title: 스택·큐·원형 버퍼, hook: StackOverflowError와 작업 큐 }
+      - { id: ds.hash-table, title: 해시 테이블, hook: HashMap 내부 구조와 리해싱 }
+      - { id: ds.consistent-hash, title: 일관 해싱, hook: 캐시 서버 추가 시 키 재분배 최소화 }
+      - { id: ds.heap, title: 힙과 우선순위 큐, hook: 지연 작업 스케줄러와 Top-K }
+      - { id: ds.balanced-tree, title: BST와 레드블랙 트리, hook: TreeMap과 범위 조회 }
+      - { id: ds.b-tree, title: B-Tree와 B+Tree, hook: DB 인덱스가 B+Tree인 이유 }
+      - { id: ds.skiplist-trie, title: 스킵 리스트와 트라이, hook: Redis Sorted Set과 자동완성 }
+      - { id: ds.graph, title: 그래프 표현과 탐색, hook: 의존성 순환 참조 감지 }
+      - { id: ds.lru-bloom, title: LRU 캐시와 블룸 필터, hook: 로컬 캐시 구현과 캐시 관통 방지 }
+
+  - id: db
+    name: 데이터베이스
+    topics:
+      - { id: db.keys-constraints, title: 키와 무결성 제약, hook: FK를 걸지 않는 실무 선택의 트레이드오프 }
+      - { id: db.normalization, title: 정규화와 반정규화, hook: 조회 성능을 위한 의도적 중복 }
+      - { id: db.join, title: 조인 알고리즘, hook: N+1 문제와 조인 전략 }
+      - { id: db.index-structure, title: 클러스터드/세컨더리 인덱스, hook: PK를 UUID로 쓰면 느려지는 이유 }
+      - { id: db.index-design, title: 복합 인덱스와 커버링 인덱스, hook: 인덱스를 걸었는데 안 타는 쿼리 }
+      - { id: db.explain, title: 실행 계획 읽기, hook: 슬로우 쿼리 분석 }
+      - { id: db.transaction, title: 트랜잭션과 ACID, hook: "@Transactional 범위와 롤백" }
+      - { id: db.isolation, title: 격리 수준과 이상 현상, hook: MySQL 기본 격리 수준에서 생기는 일 }
+      - { id: db.mvcc, title: MVCC와 언두 로그, hook: 긴 트랜잭션이 DB를 느리게 만드는 이유 }
+      - { id: db.lock, title: 레코드·갭·넥스트키 락, hook: DB 데드락 로그 읽기 }
+      - { id: db.concurrency-control, title: 낙관적 락과 비관적 락, hook: 선착순 쿠폰 발급 동시성 }
+      - { id: db.wal-recovery, title: WAL과 장애 복구, hook: 커밋된 데이터는 어떻게 살아남나 }
+      - { id: db.replication, title: 레플리케이션과 복제 지연, hook: 저장 직후 조회했는데 데이터가 없다 }
+      - { id: db.partition-shard, title: 파티셔닝과 샤딩, hook: 샤드 키 선택과 핫스팟 }
+      - { id: db.nosql-cap, title: NoSQL과 CAP/PACELC, hook: RDB 대신 NoSQL을 고르는 기준 }

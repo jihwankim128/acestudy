@@ -1,7 +1,7 @@
-// 노트/커버리지를 Firestore에 upsert 한다. CI에서 FIREBASE_SERVICE_ACCOUNT(JSON 문자열)로 실행.
+// main 머지 후 CI에서 노트·토픽·엣지를 Firestore 에 동기화한다. (FIREBASE_SERVICE_ACCOUNT = 서비스 계정 JSON)
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { loadRoadmap, loadNotes, computeCoverage } from './lib/notes.mjs';
+import { loadTopics, loadSchedule, loadNotes, buildGraph } from './lib/notes.mjs';
 
 const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
 if (!raw) {
@@ -12,19 +12,18 @@ if (!raw) {
 initializeApp({ credential: cert(JSON.parse(raw)) });
 const db = getFirestore();
 
-const roadmap = await loadRoadmap();
 const notes = await loadNotes();
-const { coverage } = computeCoverage(roadmap, notes);
+const { topics, edges } = buildGraph(await loadTopics(), await loadSchedule(), notes);
 
-const batch = db.batch();
-for (const note of notes) {
-  batch.set(db.collection('notes').doc(note.id.replace('/', '__')), {
-    ...note,
-    syncedAt: FieldValue.serverTimestamp(),
-  });
-}
-for (const topic of coverage) {
-  batch.set(db.collection('topics').doc(topic.id), topic);
-}
-await batch.commit();
-console.log(`Firestore 동기화: notes ${notes.length}, topics ${coverage.length}`);
+const writer = db.bulkWriter();
+for (const n of notes) writer.set(db.collection('notes').doc(n.topic), { ...n, syncedAt: FieldValue.serverTimestamp() });
+for (const t of topics) writer.set(db.collection('topics').doc(t.id), t);
+
+// 엣지는 노트에서 파생되므로 전부 지우고 다시 쓴다
+const old = await db.collection('edges').listDocuments();
+old.forEach((d) => writer.delete(d));
+await writer.flush();
+for (const e of edges) writer.set(db.collection('edges').doc(`${e.source}__${e.type}__${e.target}`), e);
+await writer.close();
+
+console.log(`Firestore: notes ${notes.length}, topics ${topics.length}, edges ${edges.length}`);

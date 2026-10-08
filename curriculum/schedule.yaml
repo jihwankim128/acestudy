@@ -1,0 +1,134 @@
+# scripts/assign.mjs 가 생성. 직접 수정하지 말고 토픽 추가 후 npm run assign
+sessions:
+  - session: 1
+    category: os
+    assignments:
+      JYL35: os.context-switch
+      simhokyung: os.process
+      jihwankim128: os.thread
+  - session: 2
+    category: os
+    assignments:
+      simhokyung: os.file-descriptor
+      JYL35: os.page-replacement
+      jihwankim128: os.deadlock
+  - session: 3
+    category: db
+    assignments:
+      simhokyung: db.partition-shard
+      jihwankim128: db.join
+      JYL35: db.normalization
+  - session: 4
+    category: os
+    assignments:
+      simhokyung: os.race-atomic
+      JYL35: os.sync-primitive
+      jihwankim128: os.virtual-memory
+  - session: 5
+    category: db
+    assignments:
+      simhokyung: db.replication
+      jihwankim128: db.explain
+      JYL35: db.wal-recovery
+  - session: 6
+    category: db
+    assignments:
+      JYL35: db.mvcc
+      jihwankim128: db.isolation
+      simhokyung: db.lock
+  - session: 7
+    category: arch
+    assignments:
+      simhokyung: arch.storage-device
+      JYL35: arch.cpu-cache
+      jihwankim128: arch.interrupt-dma
+  - session: 8
+    category: arch
+    assignments:
+      jihwankim128: arch.endian-encoding
+      JYL35: arch.pipeline-branch
+      simhokyung: arch.cpu-execution
+  - session: 9
+    category: net
+    assignments:
+      simhokyung: net.tls
+      jihwankim128: net.cors
+      JYL35: net.load-balancer
+  - session: 10
+    category: ds
+    assignments:
+      simhokyung: ds.complexity
+      jihwankim128: ds.stack-queue
+      JYL35: ds.linked-list
+  - session: 11
+    category: ds
+    assignments:
+      JYL35: ds.dynamic-array
+      simhokyung: ds.balanced-tree
+      jihwankim128: ds.skiplist-trie
+  - session: 12
+    category: net
+    assignments:
+      jihwankim128: net.http-semantics
+      JYL35: net.http-versions
+      simhokyung: net.timeout-retry
+  - session: 13
+    category: net
+    assignments:
+      simhokyung: net.ip-subnet
+      JYL35: net.tcp-handshake
+      jihwankim128: net.tcp-control
+  - session: 14
+    category: db
+    assignments:
+      jihwankim128: db.index-design
+      simhokyung: db.keys-constraints
+      JYL35: db.index-structure
+  - session: 15
+    category: db
+    assignments:
+      simhokyung: db.nosql-cap
+      jihwankim128: db.transaction
+      JYL35: db.concurrency-control
+  - session: 16
+    category: ds
+    assignments:
+      JYL35: ds.heap
+      jihwankim128: ds.lru-bloom
+      simhokyung: ds.hash-table
+  - session: 17
+    category: ds
+    assignments:
+      jihwankim128: ds.graph
+      simhokyung: ds.b-tree
+      JYL35: ds.consistent-hash
+  - session: 18
+    category: net
+    assignments:
+      JYL35: net.udp
+      simhokyung: net.dns
+      jihwankim128: net.layers
+  - session: 19
+    category: arch
+    assignments:
+      jihwankim128: arch.memory-hierarchy
+      JYL35: arch.memory-visibility
+      simhokyung: arch.number-representation
+  - session: 20
+    category: net
+    assignments:
+      simhokyung: net.session-token
+      jihwankim128: net.socket
+      JYL35: net.http-caching
+  - session: 21
+    category: os
+    assignments:
+      jihwankim128: os.io-model
+      JYL35: os.signal-ipc
+      simhokyung: os.syscall
+  - session: 22
+    category: os
+    assignments:
+      jihwankim128: os.scheduling
+      simhokyung: os.container
+      JYL35: os.page-cache

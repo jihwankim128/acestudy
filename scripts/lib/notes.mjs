@@ -1,34 +1,47 @@
 import { readFile, readdir } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 
 export const ROOT = fileURLToPath(new URL('../../', import.meta.url));
+export const LINK_KEYS = ['prerequisites', 'leads_to', 'related'];
 
-export async function loadRoadmap() {
-  return parse(await readFile(join(ROOT, 'curriculum/roadmap.yaml'), 'utf8'));
+const readYaml = async (path) => parse(await readFile(join(ROOT, path), 'utf8'));
+
+export const loadTopics = () => readYaml('curriculum/topics.yaml');
+export const loadTeam = () => readYaml('curriculum/team.yaml');
+export async function loadSchedule() {
+  if (!existsSync(join(ROOT, 'curriculum/schedule.yaml'))) return [];
+  return (await readYaml('curriculum/schedule.yaml')).sessions ?? [];
 }
 
-// notes/<author>/<topic>.md 를 모두 읽는다. _template 같은 _ 디렉터리는 제외.
+// notes/<category>/<topic-id>.md — notes/ 는 그대로 옵시디언 vault 로 열 수 있다.
 export async function loadNotes() {
   const notesDir = join(ROOT, 'notes');
   const notes = [];
-  for (const author of await readdir(notesDir, { withFileTypes: true })) {
-    if (!author.isDirectory() || author.name.startsWith('_')) continue;
-    for (const file of await readdir(join(notesDir, author.name))) {
+  for (const dir of await readdir(notesDir, { withFileTypes: true })) {
+    if (!dir.isDirectory() || dir.name.startsWith('_') || dir.name.startsWith('.')) continue;
+    for (const file of await readdir(join(notesDir, dir.name))) {
       if (!file.endsWith('.md')) continue;
-      const path = join(notesDir, author.name, file);
+      const vizPath = join(notesDir, dir.name, file).replace(/\.md$/, '.viz.html');
+      const path = join(notesDir, dir.name, file);
       const { meta, body } = splitFrontmatter(await readFile(path, 'utf8'));
+      const wikiLinks = [...body.matchAll(/\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/g)].map((m) => m[1].trim());
+      const prerequisites = meta.prerequisites ?? [];
+      const leadsTo = meta.leads_to ?? [];
+      const directed = new Set([...prerequisites, ...leadsTo]);
       notes.push({
-        id: `${author.name}/${file.replace(/\.md$/, '')}`,
-        path: relative(ROOT, path),
-        author: meta.author ?? author.name,
         topic: meta.topic ?? file.replace(/\.md$/, ''),
+        path: relative(ROOT, path),
         title: meta.title ?? file,
+        author: meta.author ?? null,
         date: meta.date ? String(meta.date) : null,
-        stage: meta.stage ?? 'basic',
-        concepts: meta.concepts ?? [],
+        prerequisites,
+        leads_to: leadsTo,
+        related: [...new Set([...(meta.related ?? []), ...wikiLinks])].filter((id) => !directed.has(id)),
         sources: meta.sources ?? [],
+        viz: existsSync(vizPath) ? relative(ROOT, vizPath) : null,
         body,
       });
     }
@@ -42,34 +55,59 @@ function splitFrontmatter(text) {
   return { meta: parse(m[1]) ?? {}, body: m[2].trim() };
 }
 
-// roadmap 대비 커버리지와 gap 계산
-export function computeCoverage(roadmap, notes) {
-  const topics = roadmap.tracks.flatMap((t) =>
-    t.topics.map((topic) => ({ ...topic, track: t.id, trackName: t.name })),
+// 토픽 풀 + 배정 + 노트를 합쳐 지식 그래프를 만든다.
+// 엣지 방향: source(선행) → target(후속). leads_to 는 뒤집어서 같은 방향으로 맞춘다.
+export function buildGraph({ categories }, schedule, notes) {
+  const owner = new Map();
+  for (const s of schedule) {
+    for (const [member, topic] of Object.entries(s.assignments)) owner.set(topic, { member, session: s.session });
+  }
+  const noteByTopic = new Map(notes.map((n) => [n.topic, n]));
+
+  const topics = categories.flatMap((c) =>
+    c.topics.map((t) => ({
+      ...t,
+      category: c.id,
+      categoryName: c.name,
+      owner: owner.get(t.id)?.member ?? null,
+      session: owner.get(t.id)?.session ?? null,
+      studied: noteByTopic.has(t.id),
+    })),
   );
   const known = new Set(topics.map((t) => t.id));
 
-  const coverage = topics.map((topic) => {
-    const related = notes.filter((n) => n.topic === topic.id);
-    const covered = new Set(related.flatMap((n) => n.concepts));
-    return {
-      id: topic.id,
-      name: topic.name,
-      track: topic.track,
-      trackName: topic.trackName,
-      authors: [...new Set(related.map((n) => n.author))],
-      noteCount: related.length,
-      coveredConcepts: topic.concepts.filter((c) => covered.has(c)),
-      missingConcepts: topic.concepts.filter((c) => !covered.has(c)),
-    };
-  });
-
-  const gaps = {
-    uncovered: coverage.filter((c) => c.noteCount === 0).map((c) => c.id),
-    partial: coverage
-      .filter((c) => c.noteCount > 0 && c.missingConcepts.length > 0)
-      .map(({ id, missingConcepts }) => ({ id, missingConcepts })),
-    unknownTopics: [...new Set(notes.map((n) => n.topic).filter((t) => !known.has(t)))],
+  const edges = [];
+  const seen = new Set();
+  const add = (source, target, type) => {
+    const key = `${source}>${target}>${type}`;
+    if (source === target || seen.has(key)) return;
+    seen.add(key);
+    edges.push({ source, target, type });
   };
-  return { coverage, gaps };
+  for (const n of notes) {
+    n.prerequisites.forEach((p) => add(p, n.topic, 'prerequisite'));
+    n.leads_to.forEach((t) => add(n.topic, t, 'prerequisite'));
+    n.related.forEach((r) => add(n.topic, r, 'related'));
+  }
+
+  const unknown = [...new Set(edges.flatMap((e) => [e.source, e.target]).filter((id) => !known.has(id)))];
+  return { topics, edges, unknown };
+}
+
+// PR 검증: 배정된 사람만, 존재하는 토픽으로만 링크
+export function validate(graph, notes) {
+  const errors = [];
+  const byId = new Map(graph.topics.map((t) => [t.id, t]));
+  for (const n of notes) {
+    const t = byId.get(n.topic);
+    if (!t) { errors.push(`${n.path}: topics.yaml 에 없는 topic '${n.topic}'`); continue; }
+    if (!n.path.startsWith(`notes/${t.category}/`)) errors.push(`${n.path}: notes/${t.category}/ 아래에 있어야 함`);
+    if (t.owner && n.author !== t.owner) errors.push(`${n.path}: 담당자는 ${t.owner} (author: ${n.author})`);
+    if (!n.viz) errors.push(`${n.path}: 시각화 파일 ${n.path.replace(/\.md$/, '.viz.html')} 필요`);
+    if (!n.prerequisites.length && !n.leads_to.length) errors.push(`${n.path}: prerequisites 또는 leads_to 링크가 최소 1개 필요`);
+    for (const key of LINK_KEYS) {
+      for (const id of n[key]) if (!byId.has(id)) errors.push(`${n.path}: ${key} 의 '${id}' 는 없는 토픽`);
+    }
+  }
+  return errors;
 }
