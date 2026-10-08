@@ -1,4 +1,4 @@
-name: build-sync-deploy
+name: sync-firestore
 
 on:
   push:
@@ -6,15 +6,13 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy
+  group: sync
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  # 페이지 배포는 Vercel GitHub 연동이 담당 (main = 프로덕션, PR = 미리보기)
+  sync:
     runs-on: ubuntu-latest
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -28,7 +26,3 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: npm run sync
-
-      - name: Deploy to Cloudflare
-        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
-        run: npx wrangler deploy

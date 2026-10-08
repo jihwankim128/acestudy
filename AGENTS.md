@@ -66,5 +66,5 @@ notes/<category>/<id>.md     학습 노트 — 이 폴더를 옵시디언 vault 
 notes/<category>/<id>.viz.html  노트별 시각화
 .agents/skills/study/        학습 세션 스킬 (Codex / Claude Code 공용)
 scripts/                     assign / build-index / context / sync-firestore
-site/, worker/               Cloudflare 페이지 + /api/*
+site/ + vercel.json          Vercel 페이지 + /api/*
 ```

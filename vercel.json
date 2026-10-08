@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "site",
+  "rewrites": [
+    { "source": "/api/graph", "destination": "/data/graph.json" },
+    { "source": "/api/notes", "destination": "/data/notes.json" },
+    { "source": "/api/schedule", "destination": "/data/schedule.json" }
+  ],
+  "headers": [
+    { "source": "/data/(.*).json", "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }] },
+    { "source": "/api/(.*)", "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }] }
+  ]
+}
