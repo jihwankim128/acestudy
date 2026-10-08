@@ -1,6 +1,6 @@
 // 에이전트용 컨텍스트: 내 다음 배정 토픽 + DB(Firestore)에 쌓인 노트 요약.
 // 링크(선행/후속) 매핑의 근거 자료로 쓴다.  사용: npm run context -- <github-id>
-import { loadTopics, loadTeam, loadSchedule, loadNotes, buildGraph } from './lib/notes.mjs';
+import { loadTopics, loadTeam, loadSchedule, loadNotes, buildGraph, collectSuggestions } from './lib/notes.mjs';
 
 const PROJECT = 'acestudy-cs';
 const me = process.argv[2];
@@ -17,12 +17,26 @@ const graph = buildGraph(topicsFile, schedule, notes);
 
 const mine = graph.topics.filter((t) => t.owner === me).sort((a, b) => a.session - b.session);
 const next = mine.find((t) => !t.studied);
+const remaining = mine.filter((t) => !t.studied).length;
+const suggestions = collectSuggestions(topicsFile, notes);
+const basic = graph.topics.filter((t) => t.category !== 'practice');
+const basicRatio = basic.filter((t) => t.studied).length / basic.length;
+
+// 토픽 확장 권장: 내 남은 토픽이 2개 이하이거나, 제안이 6개 이상 쌓였을 때
+const expand = {
+  recommended: remaining <= 2 || suggestions.length >= 6,
+  myRemaining: remaining,
+  suggestionCount: suggestions.length,
+  practiceReady: basicRatio >= 0.7, // 기본 토픽 70% 이상 → 2단계(실전 문제) 토픽 생성 가능
+};
 
 console.log(JSON.stringify({
   me,
   source,
   next: next ?? null,
   myProgress: `${mine.filter((t) => t.studied).length}/${mine.length}`,
+  expand,
+  suggestions,
   studiedNotes: notes.map((n) => ({
     topic: n.topic,
     title: n.title,

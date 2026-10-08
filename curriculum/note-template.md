@@ -12,6 +12,11 @@ leads_to:                         # 이 지식이 쓰이는/심화되는 토픽
 related: []                       # 방향 없이 연관된 토픽
 sources:
   - https://example.com
+# ── 토픽 제안: 학습 중 나왔지만 토픽 풀에 없고, 따로 10~20분 다룰 가치가 있는 개념 ──
+suggest:
+  - title: 가상 스레드(Virtual Thread)
+    category: os
+    why: 스레드 풀 크기 고민을 바꾸는 JDK 21 모델. 이번 토픽 범위를 넘어 별도 학습 필요
 ---
 
 ## 한 줄 요약

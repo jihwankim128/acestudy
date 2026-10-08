@@ -14,7 +14,8 @@ git switch main && git pull
 npm install                           # 처음 한 번
 npm run context -- <아이디>            # next / studiedNotes / allTopics
 ```
-- `next` 가 null 이면 배정된 토픽을 다 끝낸 것이다. 사용자에게 알리고 종료한다.
+- `expand.recommended` 가 true 이면 사용자에게 알리고 `expand` 스킬로 토픽 확장을 먼저 할지 묻는다.
+  `next` 가 null 이면 배정된 토픽을 다 끝낸 것이다 → `expand` 스킬로 이어간다.
 - 다른 사람에게 배정된 토픽은 학습하지 않는다.
 ```bash
 git switch -c study/<topic-id>
@@ -30,6 +31,8 @@ git switch -c study/<topic-id>
 - 형식: `curriculum/note-template.md`
 - 사용자가 실제로 이해한 내용과 말투를 반영한다. 교과서를 복붙하지 않는다.
 - `sources` 에 근거를 남긴다.
+- 학습 중 나왔지만 토픽 풀(`allTopics`)에 없고, 따로 10~20분 다룰 가치가 있는 개념은 `suggest` 에 남긴다.
+  (title, category, why). 이 제안이 쌓여 토픽 풀이 확장된다.
 
 ## 4. 시각화 — `notes/<category>/<topic-id>.viz.html` (필수)
 - `curriculum/viz-template.html` 을 복사해서 시작한다. 단일 HTML, 300KB 이하.

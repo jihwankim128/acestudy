@@ -2,7 +2,7 @@
 // --check: PR 검증 모드. 규칙 위반이 있으면 실패한다.
 import { copyFile, mkdir, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { ROOT, loadTopics, loadTeam, loadSchedule, loadNotes, buildGraph, validate } from './lib/notes.mjs';
+import { ROOT, loadTopics, loadTeam, loadSchedule, loadNotes, buildGraph, validate, collectSuggestions } from './lib/notes.mjs';
 
 const [topicsFile, team, schedule, notes] = await Promise.all([loadTopics(), loadTeam(), loadSchedule(), loadNotes()]);
 const graph = buildGraph(topicsFile, schedule, notes);
@@ -23,6 +23,7 @@ for (const n of notes.filter((n) => n.viz)) {
 const write = (name, data) => writeFile(join(out, name), JSON.stringify(data, null, 2));
 await write('notes.json', notes);
 await write('graph.json', { categories: topicsFile.categories.map(({ id, name }) => ({ id, name })), ...graph });
+await write('suggestions.json', collectSuggestions(topicsFile, notes));
 await write('schedule.json', { members: team.members, sessions: schedule });
 
 const studied = graph.topics.filter((t) => t.studied).length;

@@ -2,7 +2,7 @@
 
 3명이 각자 AI 에이전트와 CS를 학습하고, 결과를 **하나의 지식 그래프**로 쌓는 저장소다.
 에이전트는 이 문서를 먼저 읽고 아래 절차를 따른다.
-학습 세션 스킬은 `.agents/skills/study/SKILL.md` 에 있다. Codex는 `$study`, Claude Code는 `/study` 로 실행한다.
+스킬: 학습 세션 `study`, 토픽 확장 `expand` (`.agents/skills/`). Codex는 `$study`, Claude Code는 `/study` 처럼 실행한다.
 (`.claude/skills` 는 `.agents/skills` 를 가리키는 심볼릭 링크라서 두 에이전트가 같은 스킬을 쓴다.)
 
 ## 목적
@@ -48,10 +48,20 @@
    - `gh pr create --fill --base main`
    - PR 본문에 추가한 링크 목록과 각 링크의 근거를 적는다.
 
+## 토픽 확장 (`expand` 스킬)
+
+토픽 풀은 고정이 아니고 학습하면서 계속 늘어난다.
+1. 학습 중 범위 밖 개념은 노트의 `suggest` 에 남긴다.
+2. `npm run context` 가 확장 시점을 알려준다 (`expand.recommended`): 내 남은 토픽이 2개 이하이거나, 제안이 6개 이상 쌓였을 때.
+3. `expand` 스킬이 제안과 그래프 빈 곳을 근거로 새 토픽(10~20분, 백엔드 hook)을 만든다.
+   `npm run assign` 이 기존 배정은 유지하고 새 토픽만 랜덤 배정한다. 결과는 `curriculum:` PR 로 올린다.
+4. 기본 토픽이 70% 이상 학습되면 (`expand.practiceReady`) 2단계 `practice`(실전 문제) 카테고리를 만든다.
+   실전 토픽은 증상에서 출발하고, `prerequisites` 로 기본 토픽에 연결된다.
+
 ## 규칙
 
 - 출처(공식 문서, 책, RFC 등)를 `sources` 에 남긴다. 확실하지 않은 내용은 추측이라고 표시한다.
-- 토픽 추가나 수정은 별도 PR로 한다: `topics.yaml` 수정 → `npm run assign` (기존 배정 유지, 새 토픽만 추가 배정).
+- 토픽 추가나 수정은 `expand` 스킬로 별도 `curriculum:` PR 을 만든다 (아래 "토픽 확장").
 - 비밀값(API 키, 서비스 계정 JSON)은 절대 커밋하지 않는다.
 
 ## 구조
@@ -65,6 +75,7 @@ curriculum/viz-template.html 시각화 템플릿
 notes/<category>/<id>.md     학습 노트 — 이 폴더를 옵시디언 vault 로 열 수 있음
 notes/<category>/<id>.viz.html  노트별 시각화
 .agents/skills/study/        학습 세션 스킬 (Codex / Claude Code 공용)
+.agents/skills/expand/       토픽 풀 확장 스킬
 scripts/                     assign / build-index / context / sync-firestore
 site/ + vercel.json          Vercel 페이지 + /api/*
 ```
