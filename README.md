@@ -17,7 +17,7 @@
                                                       │
                                ┌──────────────────────┴──────────────────────┐
                                ▼                                             ▼
-                       Firestore (notes/topics/edges)          Cloudflare 페이지 (그래프 · 노트 · 시각화)
+                       Firestore (notes/topics/edges)          Vercel 페이지 (그래프 · 노트 · 시각화)
 ```
 
 - **범위(1단계)**: 컴퓨터 구조 · 운영체제 · 네트워크 · 자료구조 · 데이터베이스. 66개 토픽을 백엔드 관점(`hook`)으로 정리했다.
@@ -58,10 +58,13 @@ npm run context -- <내-github-id>     # 내 다음 토픽 확인
 
 API: `/api/graph`, `/api/notes`, `/api/schedule`
 
-## 관리자 설정 (GitHub Secrets)
+## 배포
+
+- 페이지: Vercel GitHub 연동 (main 머지 = 프로덕션, PR = 미리보기 URL)
+- DB: main 머지 시 GitHub Actions 가 Firestore 동기화
+
+### GitHub Secrets
 
 | Secret | 값 |
 |---|---|
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API 토큰 (Edit Cloudflare Workers 템플릿) |
-| `CLOUDFLARE_ACCOUNT_ID` | `5a4c89337fcfbe7c371fe2f62e2acafb` |
 | `FIREBASE_SERVICE_ACCOUNT` | Firebase `acestudy-cs` 서비스 계정 키 JSON 전체 |

@@ -7,15 +7,11 @@
     "build": "node scripts/build-index.mjs",
     "check": "node scripts/build-index.mjs --check",
     "context": "node scripts/context.mjs",
-    "dev": "npm run build && wrangler dev",
-    "deploy": "npm run build && wrangler deploy",
+    "dev": "npm run build && npx serve site -l 8787",
     "sync": "node scripts/sync-firestore.mjs"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0",
     "yaml": "^2.6.0"
-  },
-  "devDependencies": {
-    "wrangler": "^4.148.0"
   }
 }

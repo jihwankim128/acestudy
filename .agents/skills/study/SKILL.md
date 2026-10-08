@@ -36,7 +36,7 @@ git switch -c study/<topic-id>
 - 이 토픽의 **핵심 동작 과정**을 단계(step) 애니메이션으로 보여준다.
   - 예: TCP 핸드셰이크 패킷 흐름, B+Tree 노드 분할, 페이지 교체, 락 대기 그래프
 - 사용자의 이해를 기준으로 만든다. 사용자에게 "어떤 장면이 제일 헷갈렸는지" 묻고 그 장면을 넣는다.
-- 확인: `npm run dev` 로 로컬 페이지에서 해당 토픽을 열어본다.
+- 확인: `npm run dev` 로 로컬 페이지(http://localhost:8787)에서 해당 토픽을 열어본다. PR을 올리면 Vercel 미리보기 URL로도 확인할 수 있다.
 
 ## 5. 그래프 매핑 (PR 전 필수)
 `context` 출력의 `studiedNotes`(DB에 쌓인 노트)와 `allTopics` 를 근거로 frontmatter를 채운다.

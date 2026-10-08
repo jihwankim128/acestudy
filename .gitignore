@@ -1,7 +1,8 @@
 node_modules/
-.wrangler/
 .dev.vars
 site/data/
 *service-account*.json
 .firebase/
 .DS_Store
+.vercel
+.env*
