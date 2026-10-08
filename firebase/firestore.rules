@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 공개 읽기, 쓰기는 CI(Admin SDK)만 — Admin SDK는 규칙을 우회한다.
+    match /{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AceStudy</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header>
+    <h1>AceStudy</h1>
+    <p class="sub">AI와 함께 쌓아가는 CS 스터디 기록</p>
+    <div id="summary" class="summary"></div>
+  </header>
+  <main>
+    <section>
+      <h2>커버리지</h2>
+      <div id="tracks" class="tracks"></div>
+    </section>
+    <section>
+      <h2>최근 노트</h2>
+      <ul id="notes" class="notes"></ul>
+    </section>
+  </main>
+  <dialog id="viewer">
+    <form method="dialog"><button aria-label="닫기">✕</button></form>
+    <article id="note-body"></article>
+  </dialog>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

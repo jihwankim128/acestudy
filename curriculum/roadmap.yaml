@@ -1,0 +1,128 @@
+# AI가 생성한 1단계(기본 CS) 학습 범위. 에이전트가 gap을 보며 계속 보강한다.
+# topic id 형식: <track>.<topic>
+stages:
+  basic: 기본 CS
+  practice: 실무/프로젝트 시나리오
+
+tracks:
+  - id: ds
+    name: 자료구조
+    topics:
+      - id: ds.array-list
+        name: 배열과 연결 리스트
+        concepts: [시간 복잡도 비교, 동적 배열 리사이징, 캐시 지역성]
+      - id: ds.stack-queue
+        name: 스택과 큐
+        concepts: [LIFO/FIFO, 원형 큐, 덱, 우선순위 큐]
+      - id: ds.hash
+        name: 해시 테이블
+        concepts: [해시 함수, 충돌 해결, 로드 팩터, 리해싱]
+      - id: ds.tree
+        name: 트리
+        concepts: [이진 탐색 트리, 균형 트리, B-Tree, 힙, 트라이]
+      - id: ds.graph
+        name: 그래프
+        concepts: [인접 리스트/행렬, BFS, DFS, 위상 정렬]
+
+  - id: algo
+    name: 알고리즘
+    topics:
+      - id: algo.complexity
+        name: 복잡도 분석
+        concepts: [Big-O, 상환 분석, 공간 복잡도]
+      - id: algo.sort
+        name: 정렬
+        concepts: [퀵 정렬, 병합 정렬, 힙 정렬, 안정 정렬]
+      - id: algo.search
+        name: 탐색
+        concepts: [이분 탐색, 투 포인터, 슬라이딩 윈도우]
+      - id: algo.dp-greedy
+        name: DP와 그리디
+        concepts: [최적 부분 구조, 메모이제이션, 그리디 선택 속성]
+      - id: algo.shortest-path
+        name: 최단 경로
+        concepts: [다익스트라, 벨만-포드, 플로이드-워셜]
+
+  - id: os
+    name: 운영체제
+    topics:
+      - id: os.process-thread
+        name: 프로세스와 스레드
+        concepts: [프로세스 vs 스레드, PCB, 컨텍스트 스위칭, 멀티스레딩 모델]
+      - id: os.scheduling
+        name: CPU 스케줄링
+        concepts: [FCFS, SJF, 라운드 로빈, MLFQ, 선점/비선점]
+      - id: os.sync
+        name: 동기화
+        concepts: [임계 구역, 뮤텍스, 세마포어, 모니터, 데드락]
+      - id: os.memory
+        name: 메모리 관리
+        concepts: [가상 메모리, 페이징, 세그멘테이션, 페이지 교체, TLB]
+      - id: os.io-fs
+        name: I/O와 파일 시스템
+        concepts: [블로킹/논블로킹, 동기/비동기, inode, 저널링]
+
+  - id: net
+    name: 네트워크
+    topics:
+      - id: net.layers
+        name: 네트워크 계층
+        concepts: [OSI 7계층, TCP/IP 4계층, 캡슐화]
+      - id: net.tcp-udp
+        name: TCP와 UDP
+        concepts: [3-way handshake, 4-way handshake, 흐름 제어, 혼잡 제어]
+      - id: net.http
+        name: HTTP
+        concepts: [HTTP/1.1, HTTP/2, HTTP/3, 쿠키와 세션, 캐싱]
+      - id: net.tls
+        name: HTTPS와 TLS
+        concepts: [대칭/비대칭 키, 인증서, TLS 핸드셰이크]
+      - id: net.dns-lb
+        name: DNS와 로드밸런싱
+        concepts: [DNS 조회 과정, L4/L7 로드밸런서, CDN]
+
+  - id: db
+    name: 데이터베이스
+    topics:
+      - id: db.transaction
+        name: 트랜잭션
+        concepts: [ACID, 격리 수준, MVCC, 락]
+      - id: db.index
+        name: 인덱스
+        concepts: [B+Tree 인덱스, 클러스터드 인덱스, 커버링 인덱스, 실행 계획]
+      - id: db.normalization
+        name: 정규화
+        concepts: [1NF~BCNF, 반정규화, 이상 현상]
+      - id: db.nosql
+        name: NoSQL과 분산 DB
+        concepts: [CAP, 레플리케이션, 샤딩, 일관성 모델]
+
+  - id: arch
+    name: 컴퓨터 구조
+    topics:
+      - id: arch.cpu
+        name: CPU와 명령어 처리
+        concepts: [명령어 사이클, 파이프라이닝, 인터럽트]
+      - id: arch.memory-hierarchy
+        name: 메모리 계층
+        concepts: [캐시, 캐시 일관성, 지역성]
+
+  - id: sec
+    name: 보안
+    topics:
+      - id: sec.web
+        name: 웹 보안
+        concepts: [XSS, CSRF, SQL Injection, CORS]
+      - id: sec.auth
+        name: 인증과 인가
+        concepts: [세션 vs 토큰, JWT, OAuth 2.0, 비밀번호 해싱]
+
+  - id: se
+    name: 소프트웨어 설계
+    topics:
+      - id: se.oop
+        name: 객체지향
+        concepts: [SOLID, 디자인 패턴, 의존성 주입]
+      - id: se.testing
+        name: 테스트
+        concepts: [단위/통합/E2E, 테스트 더블, TDD]
