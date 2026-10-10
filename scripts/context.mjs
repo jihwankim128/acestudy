@@ -19,7 +19,9 @@ const mine = graph.topics.filter((t) => t.owner === me).sort((a, b) => a.session
 const next = mine.find((t) => !t.studied);
 const remaining = mine.filter((t) => !t.studied).length;
 const suggestions = collectSuggestions(topicsFile, notes);
-const basic = graph.topics.filter((t) => t.category !== 'practice');
+// 시스템 설계·실전·심화 목차를 추가해도 기본 CS 준비도의 분모는 해당 5개 영역으로 유지한다.
+const basicCategories = new Set(['arch', 'os', 'net', 'ds', 'db']);
+const basic = graph.topics.filter((t) => basicCategories.has(t.category));
 const basicRatio = basic.filter((t) => t.studied).length / basic.length;
 
 // 토픽 확장 권장: 내 남은 토픽이 2개 이하이거나, 제안이 6개 이상 쌓였을 때
@@ -27,7 +29,8 @@ const expand = {
   recommended: remaining <= 2 || suggestions.length >= 6,
   myRemaining: remaining,
   suggestionCount: suggestions.length,
-  practiceReady: basicRatio >= 0.7, // 기본 토픽 70% 이상 → 2단계(실전 문제) 토픽 생성 가능
+  practiceReady: basicRatio >= 0.7, // 기본 CS 70% 이상 → 실전 학습 권장
+  basicProgress: `${basic.filter((t) => t.studied).length}/${basic.length}`,
 };
 
 console.log(JSON.stringify({
