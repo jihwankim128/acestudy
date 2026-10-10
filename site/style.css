@@ -64,7 +64,7 @@ code, pre { font-family: "JetBrains Mono", monospace; font-size: 13px; }
 :not(pre) > code { background: var(--bg-side); padding: 1px 5px; border-radius: 4px; }
 pre { background: var(--bg-side); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
 .viz { margin: 0 0 22px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.viz iframe { display: block; width: 100%; height: 380px; border: 0; background: var(--bg); }
+.viz iframe { display: block; width: 100%; height: 500px; border: 0; background: var(--bg); }
 .quiz { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 8px 0; background: var(--bg-side); }
 .quiz summary { cursor: pointer; font-weight: 500; }
 .quiz p { margin: 8px 0 2px; color: var(--fg-muted); }
