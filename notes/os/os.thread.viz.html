@@ -1,0 +1,289 @@
+<!doctype html>
+<!-- os.thread 시각화 — 6개 장면을 단계별로. 장면 탭 → ◀ ❚❚ ▶ (키보드 ← → 스페이스) -->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --bg:#1e1e1e; --panel:#262626; --fg:#dadada; --muted:#8f8f8f; --line:#3a3a3a; --accent:#a882ff; --ok:#98c379; --warn:#e5c07b; --bad:#e06c75; --info:#61afef; }
+  @media (prefers-color-scheme: light) { :root { --bg:#fff; --panel:#f6f6f6; --fg:#222; --muted:#6b6b6b; --line:#ddd; --accent:#7c4dff; --ok:#3d8a1f; --warn:#b07800; --bad:#d0414f; --info:#2a7bd6; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 Inter, system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif; padding:14px 16px; }
+  .tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:10px; }
+  .tabs button { font-size:12px; padding:3px 10px; }
+  .tabs button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+  svg { width:100%; height:auto; display:block; }
+  .bar { display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  button { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:4px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .caption { flex:1; min-width:220px; color:var(--fg); }
+  .step { font-variant-numeric:tabular-nums; color:var(--accent); min-width:34px; }
+  text { fill:var(--fg); font-size:13px; }
+  .m { fill:var(--muted); font-size:11px; }
+  .b { font-weight:600; }
+  .calc { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px 18px; margin-top:6px; }
+  .calc label { display:grid; grid-template-columns:1fr 54px; gap:2px 8px; font-size:12px; color:var(--muted); align-items:center; }
+  .calc input { grid-column:1 / -1; accent-color:var(--accent); width:100%; }
+  .calc output { text-align:right; color:var(--fg); font-variant-numeric:tabular-nums; }
+  .result { margin-top:12px; padding:10px 12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; line-height:1.8; }
+  .result b { color:var(--accent); }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<div class="tabs" id="tabs"></div>
+<svg id="stage" viewBox="0 0 640 300"></svg>
+<div id="calc" class="hidden"></div>
+<div class="bar" id="ctrl">
+  <button id="prev" aria-label="이전">◀</button><button id="play" aria-label="재생">❚❚</button><button id="next" aria-label="다음">▶</button>
+  <span class="step" id="idx"></span><span class="caption" id="caption"></span>
+</div>
+<script>
+const C = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const box = (x, y, w, h, o = {}) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${o.r ?? 6}" fill="${o.fill ?? C('--panel')}" stroke="${o.stroke ?? C('--line')}" stroke-width="${o.sw ?? 1}" ${o.dash ? `stroke-dasharray="${o.dash}"` : ''} opacity="${o.op ?? 1}"/>`;
+const txt = (x, y, s, cls = '', o = {}) => `<text x="${x}" y="${y}" class="${cls}" text-anchor="${o.a ?? 'start'}" ${o.fill ? `style="fill:${o.fill}"` : ''}>${s}</text>`;
+const arrow = (x1, y1, x2, y2, color, dash) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="1.6" ${dash ? 'stroke-dasharray="4 3"' : ''} marker-end="url(#ah-${color.replace('#', '')})"/>`;
+const defs = (colors) => `<defs>${colors.map((c) => `<marker id="ah-${c.replace('#', '')}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`).join('')}</defs>`;
+
+/* ── 장면 1: 공유 vs 독립 ── */
+const S1 = {
+  title: '① 공유 vs 독립',
+  steps: [
+    { c: '프로세스 = 주소 공간: 코드 · 데이터(static) · 힙 · 열린 파일(소켓 포함)', t: 0 },
+    { c: '스레드 1 생성: 스택과 레지스터(PC, SP)만 새로 생긴다', t: 1 },
+    { c: '스레드 2, 3 생성: 각자 스택 + 레지스터. 그래서 생성이 가볍다', t: 3 },
+    { c: '따로 갖는 것 = 실행 흐름. 어디까지 실행했나(PC)와 어떻게 왔나(스택)가 있어야 독립적으로 멈췄다 이어간다', t: 3, priv: true },
+    { c: '나머지는 전부 공유 → 두 스레드가 힙의 같은 객체를 동시에 건드린다 → 동기화 필요 (os.sync-primitive)', t: 3, race: true },
+  ],
+  draw(s) {
+    const a = C('--accent'), w = C('--warn'), m = C('--muted');
+    let h = defs([w, m]) + box(10, 10, 620, 280, { fill: 'none' }) + txt(24, 32, '프로세스 (주소 공간)', 'b');
+    ['코드', '데이터 (static)', '힙', '열린 파일 · 소켓'].forEach((n, i) => {
+      const hot = s.race && i === 2;
+      h += box(24, 46 + i * 58, 210, 46, { stroke: hot ? w : C('--line'), sw: hot ? 2 : 1 });
+      h += txt(38, 74 + i * 58, n) + txt(222, 74 + i * 58, '공유', 'm', { a: 'end' });
+    });
+    if (s.race) h += `<circle cx="150" cy="${46 + 2 * 58 + 23}" r="7" fill="${w}"/>` + txt(162, 46 + 2 * 58 + 27, '주문 객체', 'm');
+    for (let i = 0; i < s.t; i++) {
+      const x = 280 + i * 116;
+      const st = s.priv ? a : C('--line');
+      h += box(x, 46, 104, 220, { stroke: a, fill: 'none', sw: 1.4 });
+      h += txt(x + 12, 68, `스레드 ${i + 1}`, 'b');
+      h += box(x + 10, 80, 84, 100, { stroke: st, sw: s.priv ? 2 : 1 }) + txt(x + 20, 100, '스택', '') + txt(x + 20, 120, '지역 변수', 'm') + txt(x + 20, 136, '호출 기록', 'm');
+      h += box(x + 10, 190, 84, 62, { stroke: st, sw: s.priv ? 2 : 1 }) + txt(x + 20, 210, '레지스터') + txt(x + 20, 228, `PC=0x${(4096 + i * 272).toString(16)}`, 'm') + txt(x + 20, 244, 'SP, TCB', 'm');
+      if (s.race && i < 2) h += arrow(x, 150 + i * 20, 158, 46 + 2 * 58 + 23, w, true);
+      else if (!s.race) h += arrow(x, 160 + i * 6, 246, 160 + i * 6, m, true);
+    }
+    // 공유 영역 전체를 묶는 괄호: 모든 스레드가 4개 영역을 전부 공유
+    if (s.t > 0 && !s.race) h += `<path d="M240 50 Q250 50 250 60 L250 270 Q250 280 240 280" fill="none" stroke="${m}"/>` + txt(256, 40, '모든 스레드가 전부 공유', 'm');
+    return h;
+  },
+};
+
+/* ── 장면 2: 상태 전이 ── */
+const S2 = {
+  title: '② 스레드 상태',
+  steps: [
+    { c: 'Ready: 실행 준비 완료. CPU를 기다리며 런 큐에 있다', on: 'ready' },
+    { c: '스케줄러가 선택 → Running: CPU에서 명령어 실행 중', on: 'run', e: 'pick' },
+    { c: 'read() 시스템 콜 → 데이터가 아직 없음 → 커널이 대기 큐로 내린다. CPU는 다른 스레드에게', on: 'block', e: 'sys' },
+    { c: '데이터 도착 → 인터럽트(완료 신호) → 커널이 깨워서 Ready로. 인터럽트는 대기를 "깨우는" 쪽', on: 'ready', e: 'irq' },
+    { c: '다시 선택되면 Running. 이 사이클이 요청 하나당 여러 번 돈다', on: 'run', e: 'pick' },
+    { c: '금요일 저녁: 200개가 전부 Blocked. 스레드는 busy인데 CPU는 25%', on: 'block', crowd: true },
+  ],
+  draw(s) {
+    const a = C('--accent'), m = C('--muted'), w = C('--warn'), ok = C('--ok');
+    const P = { ready: [90, 120], run: [430, 120], block: [260, 240] };
+    let h = defs([a, m, w, ok]);
+    const node = (k, label, sub) => {
+      const [x, y] = P[k], on = s.on === k;
+      return box(x - 75, y - 30, 150, 60, { stroke: on ? a : C('--line'), sw: on ? 2.4 : 1 }) + txt(x, y - 4, label, 'b', { a: 'middle' }) + txt(x, y + 16, sub, 'm', { a: 'middle' });
+    };
+    h += node('ready', 'Ready', '런 큐에서 대기') + node('run', 'Running', 'CPU 실행 중') + node('block', 'Blocked / Waiting', 'I/O · 락 · 풀 대기');
+    const e = (k, x1, y1, x2, y2, label, lx, ly) => {
+      const on = s.e === k, col = on ? (k === 'irq' ? ok : k === 'sys' ? w : a) : m;
+      return arrow(x1, y1, x2, y2, col, !on) + txt(lx, ly, label, on ? 'b' : 'm', { a: 'middle', fill: on ? col : undefined });
+    };
+    h += e('pick', 168, 110, 352, 110, '스케줄러 선택', 260, 100);
+    h += e('sys', 430, 152, 310, 208, '블로킹 시스템 콜 (read 등)', 430, 200);
+    h += e('irq', 205, 222, 100, 152, 'I/O 완료 → 인터럽트', 110, 200);
+    h += arrow(352, 132, 168, 132, m, true) + txt(260, 148, '타임 슬라이스 소진', 'm', { a: 'middle' });
+    if (s.crowd) {
+      for (let i = 0; i < 40; i++) h += `<circle cx="${200 + (i % 20) * 6.2}" cy="${276 + Math.floor(i / 20) * 7}" r="2.4" fill="${w}"/>`;
+      h += txt(520, 250, 'busy 스레드 200/200', 'b', { a: 'middle', fill: w }) + txt(520, 272, 'CPU 25%', 'b', { a: 'middle' });
+    }
+    return h;
+  },
+};
+
+/* ── 장면 3: 코어 1개 타임라인 ── */
+const S3 = {
+  title: '③ 대기 시간 채우기',
+  steps: [
+    { c: '스레드 1개: 10ms 계산 → 90ms DB 대기. 코어는 90%를 논다', k: 1 },
+    { c: '스레드 2개: 대기 시간에 두 번째가 CPU를 쓴다. 사용률 20%', k: 2 },
+    { c: '스레드 5개: 50%', k: 5 },
+    { c: '스레드 10개: A가 기다리는 90ms를 다른 9개가 10ms씩 채운다 → 100%. A + 9 = 10', k: 10 },
+    { c: '12개로 늘리면? CPU는 이미 100% → 남는 2개는 런 큐에서 줄만 선다', k: 12 },
+    { c: '일반화: 스레드 수 = 코어 × (1 + 대기/계산) = 8 × (1 + 90/10) = 80', k: 10, formula: true },
+  ],
+  draw(s) {
+    const a = C('--accent'), m = C('--muted'), w = C('--warn'), info = C('--info');
+    const X = 70, W = 540, scale = W / 100, rowH = 17, y0 = 34;
+    let h = txt(X, 22, '0ms', 'm') + txt(X + W, 22, '100ms', 'm', { a: 'end' }) + txt(X + W / 2, 22, '코어 1개 · 요청당 CPU 10ms + 대기 90ms', 'm', { a: 'middle' });
+    const n = Math.min(s.k, 12);
+    for (let i = 0; i < n; i++) {
+      const y = y0 + i * rowH, extra = i >= 10;
+      const start = extra ? 100 : i * 10;
+      h += txt(X - 8, y + 12, String.fromCharCode(65 + i), 'm', { a: 'end' });
+      if (!extra) {
+        h += `<rect x="${X + start * scale}" y="${y}" width="${10 * scale - 1}" height="${rowH - 4}" rx="2" fill="${a}"/>`;
+        h += `<rect x="${X + (start + 10) * scale}" y="${y + 5}" width="${Math.min(90, 90 - Math.max(0, start + 100 - 100)) * scale}" height="${rowH - 14}" rx="1" fill="${info}" opacity=".45"/>`;
+      } else {
+        h += box(X, y, W, rowH - 4, { fill: 'none', stroke: w, dash: '3 3', r: 2 }) + txt(X + W / 2, y + 10, '런 큐 대기 (CPU 꽉 참)', 'm', { a: 'middle', fill: w });
+      }
+    }
+    const util = Math.min(s.k, 10) * 10;
+    const yb = y0 + 12 * rowH + 8;
+    h += txt(X, yb + 12, 'CPU 사용률', 'm') + box(X + 74, yb, W - 74, 14, { r: 3 }) + `<rect x="${X + 74}" y="${yb}" width="${(W - 74) * util / 100}" height="14" rx="3" fill="${util === 100 ? C('--ok') : a}"/>` + txt(X + W, yb + 30, `${util}%`, 'b', { a: 'end' });
+    h += `<rect x="${X}" y="${yb + 22}" width="10" height="8" fill="${a}"/>` + txt(X + 14, yb + 30, '계산(CPU)', 'm') + `<rect x="${X + 90}" y="${yb + 24}" width="14" height="4" fill="${info}" opacity=".6"/>` + txt(X + 108, yb + 30, 'DB 대기', 'm');
+    if (s.formula) h += box(170, 110, 300, 64, { stroke: a, sw: 2 }) + txt(320, 136, '8코어 × (1 + 90/10)', 'b', { a: 'middle' }) + txt(320, 160, '= 스레드 80개 필요', 'b', { a: 'middle', fill: a });
+    return h;
+  },
+};
+
+/* ── 장면 4: 금요일 저녁 ── */
+const S4 = {
+  title: '④ 금요일 저녁',
+  steps: [
+    { c: '스레드 200 · 커넥션 10 · 쿼리당 50ms 점유 → 최대 처리량 = 10 ÷ 0.05s = 초당 200건', th: 200, hold: 50 },
+    { c: '팀장: "2,000으로 올려" → 처리량은 여전히 초당 200건. 1,990개는 풀 앞에서 줄만 선다', th: 2000, hold: 50 },
+    { c: '줄의 맨 뒤 대기 ≈ 1,990 ÷ 200/s ≈ 10초 → 클라이언트 타임아웃이 먼저 끊는다. 서버 스레드는 그것도 모르고 계속 대기', th: 2000, hold: 50, timeout: true },
+    { c: 'HikariCP connectionTimeout 30초를 넘기면 예외. 스택 예약 1MB × 2,000 ≈ 2GB, 컨텍스트 스위칭 비용까지 추가', th: 2000, hold: 50, cost: true },
+    { c: '진짜 처방: 쿼리 점유 시간 50ms → 10ms → 처리량 초당 1,000건. 스레드가 아니라 뒷단을 고친다', th: 200, hold: 10, fix: true },
+  ],
+  draw(s) {
+    const a = C('--accent'), m = C('--muted'), w = C('--warn'), bad = C('--bad'), ok = C('--ok');
+    const tput = Math.round(10 / (s.hold / 1000));
+    let h = defs([m]);
+    const dots = Math.min(Math.round(s.th / 20), 100);
+    h += txt(20, 24, `톰캣 스레드 ${s.th.toLocaleString()}개`, 'b') + txt(20, 40, '(점 1개 = 스레드 20개)', 'm');
+    for (let i = 0; i < dots; i++) {
+      const waiting = i >= 10 / 2 ? (s.th > 200 || i >= 10) : false;
+      const col = s.th > 200 && i >= 10 ? (s.timeout ? bad : w) : a;
+      h += `<circle cx="${28 + (i % 10) * 18}" cy="${60 + Math.floor(i / 10) * 18}" r="6" fill="${col}" opacity="${waiting && s.th <= 200 ? .7 : 1}"/>`;
+    }
+    h += arrow(214, 140, 300, 140, m);
+    h += box(310, 60, 150, 160, { stroke: a, sw: 1.6 }) + txt(385, 82, '커넥션 풀 (10)', 'b', { a: 'middle' });
+    for (let i = 0; i < 10; i++) h += `<rect x="${322 + (i % 5) * 26}" y="${96 + Math.floor(i / 5) * 34}" width="20" height="24" rx="3" fill="${s.fix ? ok : a}"><animate attributeName="opacity" values="1;.35;1" dur="${s.hold / 25}s" begin="${i * 0.07}s" repeatCount="indefinite"/></rect>`;
+    h += txt(385, 186, `쿼리당 점유 ${s.hold}ms`, 'm', { a: 'middle' }) + txt(385, 206, `→ 초당 ${tput.toLocaleString()}건`, 'b', { a: 'middle', fill: s.fix ? ok : a });
+    h += arrow(462, 140, 520, 140, m) + box(526, 110, 96, 60) + txt(574, 144, 'DB', 'b', { a: 'middle' });
+    if (s.th > 200) h += txt(110, 270, `풀 앞 대기: ${(s.th - 10).toLocaleString()}개`, 'b', { a: 'middle', fill: s.timeout ? bad : w });
+    if (s.timeout) h += txt(110, 290, '대기 ≈ 10초 > 클라이언트 타임아웃', 'm', { a: 'middle', fill: bad });
+    if (s.cost) h += box(470, 200, 160, 70, { stroke: bad }) + txt(550, 222, 'connectionTimeout 30s', 'm', { a: 'middle' }) + txt(550, 240, '스택 예약 ≈ 2GB', 'm', { a: 'middle' }) + txt(550, 258, '+ 컨텍스트 스위칭', 'm', { a: 'middle' });
+    if (s.fix) h += txt(110, 270, '스레드는 그대로, 뒷단을 개선', 'b', { a: 'middle', fill: ok });
+    return h;
+  },
+};
+
+/* ── 장면 5: 계산기 (인터랙티브) ── */
+const S5 = {
+  title: '⑤ 계산기',
+  interactive: true,
+  init(el) {
+    const f = [
+      ['cores', '코어 수', 1, 32, 8, ''],
+      ['cpu', '요청당 CPU 시간', 1, 100, 10, 'ms'],
+      ['wait', '요청당 대기 시간', 0, 900, 90, 'ms'],
+      ['rps', '목표 처리량', 50, 5000, 300, '/s'],
+      ['pool', 'DB 커넥션 풀', 1, 100, 10, '개'],
+      ['hold', '쿼리당 커넥션 점유', 1, 200, 50, 'ms'],
+    ];
+    el.innerHTML = `<div class="calc">${f.map(([id, l, mn, mx, v, u]) => `<label>${l}<output id="o-${id}">${v}${u}</output><input type="range" id="${id}" min="${mn}" max="${mx}" value="${v}" data-u="${u}"></label>`).join('')}</div><div class="result" id="res"></div>`;
+    const g = (id) => +el.querySelector('#' + id).value;
+    const run = () => {
+      f.forEach(([id]) => { const i = el.querySelector('#' + id); el.querySelector('#o-' + id).textContent = i.value + i.dataset.u; });
+      const cpuThreads = Math.round(g('cores') * (1 + g('wait') / g('cpu')));
+      const latency = (g('cpu') + g('wait')) / 1000;
+      const little = Math.ceil(g('rps') * latency);
+      const poolCap = Math.floor(g('pool') / (g('hold') / 1000));
+      const cpuCap = Math.floor(g('cores') / (g('cpu') / 1000));
+      const cap = Math.min(poolCap, cpuCap);
+      const bottleneck = poolCap < cpuCap ? 'DB 커넥션 풀' : 'CPU';
+      const ok = g('rps') <= cap;
+      el.querySelector('#res').innerHTML = `
+        CPU를 놀리지 않는 스레드 수: 코어 × (1 + 대기/계산) = <b>${cpuThreads}</b><br>
+        목표 처리량에 필요한 동시 처리(리틀의 법칙): ${g('rps')}/s × ${latency.toFixed(3)}s = <b>${little}</b><br>
+        처리량 상한: CPU <b>${cpuCap.toLocaleString()}/s</b> · DB 풀 <b>${poolCap.toLocaleString()}/s</b> → 병목은 <b>${bottleneck}</b><br>
+        ${ok ? `✅ 목표 ${g('rps')}/s 달성 가능. 스레드 출발점: <b>${Math.max(little, Math.min(cpuThreads, little * 2))}</b> 근처 → 부하 테스트로 확정` : `⚠️ 목표 ${g('rps')}/s는 ${bottleneck} 상한(${cap}/s)을 넘음. 스레드를 늘려도 해결 안 됨 → ${bottleneck === 'CPU' ? '스케일 아웃 / 코드 최적화' : '풀 크기 · 쿼리 시간 개선'}`}`;
+    };
+    el.addEventListener('input', run);
+    run();
+  },
+  steps: [{ c: '슬라이더를 움직여 봐. 대기 비율, 커넥션 풀, 쿼리 시간에 따라 병목과 처방이 바뀐다' }],
+  draw() { return ''; },
+};
+
+/* ── 장면 6: Q9 결정 흐름 ── */
+const S6 = {
+  title: '⑥ threads.max 올릴까?',
+  steps: [
+    { c: '"200 → 1,000으로 올리자" 먼저 확인: 피크 때 busy 스레드, CPU, 커넥션 풀 pending', path: [] },
+    { c: '경우 A: CPU 높음 → 반대. 코어가 이미 꽉 참. 스레드 늘리면 스위칭만 증가 → 스케일 아웃 / 최적화', path: ['q1', 'yes1', 'A'] },
+    { c: '경우 B: CPU 낮음 + 풀 pending 많음 → 반대. 병목은 DB → 풀 크기 · 쿼리 시간 개선 (금요일 저녁)', path: ['q1', 'no1', 'q2', 'yes2', 'B'] },
+    { c: '경우 C: CPU 낮음 + 뒷단 여유 → 찬성. 단 1,000이 아니라 코어 × (1 + W/C)로 상한 계산 → 부하 테스트', path: ['q1', 'no1', 'q2', 'no2', 'Cc'] },
+    { c: '스레드 증설이 답인 경우는 하나: CPU가 놀고, 뒷단도 여유가 있을 때', path: ['q1', 'no1', 'q2', 'no2', 'Cc'], sum: true },
+  ],
+  draw(s) {
+    const a = C('--accent'), m = C('--muted'), bad = C('--bad'), ok = C('--ok');
+    const on = (k) => s.path.includes(k);
+    let h = defs([a, m]);
+    const q = (k, x, y, l1, l2) => box(x - 90, y - 26, 180, 52, { stroke: on(k) ? a : C('--line'), sw: on(k) ? 2.2 : 1 }) + txt(x, y - 3, l1, 'b', { a: 'middle' }) + txt(x, y + 15, l2, 'm', { a: 'middle' });
+    const r = (k, x, y, l1, l2, col) => box(x - 82, y - 26, 164, 52, { stroke: on(k) ? col : C('--line'), sw: on(k) ? 2.4 : 1, fill: C('--panel') }) + txt(x, y - 3, l1, 'b', { a: 'middle', fill: on(k) ? col : undefined }) + txt(x, y + 15, l2, 'm', { a: 'middle' });
+    const e = (k, x1, y1, x2, y2, l, lx, ly) => arrow(x1, y1, x2, y2, on(k) ? a : m, !on(k)) + txt(lx, ly, l, on(k) ? 'b' : 'm', { a: 'middle' });
+    h += q('q1', 150, 60, 'CPU 사용률 높음?', '피크 시 70~80% 이상');
+    h += e('yes1', 240, 60, 380, 60, '예', 310, 52) + r('A', 470, 60, '❌ 반대', '스케일 아웃 · 최적화', bad);
+    h += e('no1', 150, 86, 150, 134, '아니오', 178, 114);
+    h += q('q2', 150, 160, '커넥션 풀 pending > 0?', '뒷단 병목 여부');
+    h += e('yes2', 240, 160, 380, 160, '예', 310, 152) + r('B', 470, 160, '❌ 반대', '풀 · 쿼리 개선', bad);
+    h += e('no2', 150, 186, 150, 234, '아니오', 178, 214);
+    h += r('Cc', 150, 260, '⭕ 찬성 (조건부)', '코어×(1+W/C) → 부하 테스트', ok);
+    if (s.sum) h += box(330, 222, 290, 64, { stroke: ok, sw: 2 }) + txt(475, 248, 'CPU가 놀고 + 뒷단 여유', 'b', { a: 'middle' }) + txt(475, 270, '그때만 스레드가 답이다', 'b', { a: 'middle', fill: ok });
+    return h;
+  },
+};
+
+/* ── 공통 컨트롤 ── */
+const SCENES = [S1, S2, S3, S4, S5, S6];
+let si = 0, i = 0, timer = null;
+const $ = (id) => document.getElementById(id);
+$('tabs').innerHTML = SCENES.map((s, k) => `<button data-k="${k}">${s.title}</button>`).join('');
+function show() {
+  const S = SCENES[si];
+  document.querySelectorAll('#tabs button').forEach((b, k) => b.classList.toggle('on', k === si));
+  $('stage').classList.toggle('hidden', !!S.interactive);
+  $('calc').classList.toggle('hidden', !S.interactive);
+  ['prev', 'play', 'next'].forEach((id) => $(id).classList.toggle('hidden', !!S.interactive));
+  if (S.interactive) { if (!$('calc').dataset.ready) { S.init($('calc')); $('calc').dataset.ready = 1; } }
+  else $('stage').innerHTML = S.draw(S.steps[i]);
+  $('caption').textContent = S.steps[i].c;
+  $('idx').textContent = S.interactive ? '' : `${i + 1}/${S.steps.length}`;
+}
+const go = (d) => { const n = SCENES[si].steps.length; i = (i + d + n) % n; show(); };
+const play = () => { clearInterval(timer); timer = setInterval(() => go(1), 3600); $('play').textContent = '❚❚'; };
+const pause = () => { clearInterval(timer); timer = null; $('play').textContent = '▶︎'; };
+$('tabs').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; si = +b.dataset.k; i = 0; show(); SCENES[si].interactive ? pause() : play(); };
+$('prev').onclick = () => { pause(); go(-1); };
+$('next').onclick = () => { pause(); go(1); };
+$('play').onclick = () => (timer ? pause() : play());
+addEventListener('keydown', (e) => {
+  if (SCENES[si].interactive) return;
+  if (e.key === 'ArrowRight') { pause(); go(1); }
+  if (e.key === 'ArrowLeft') { pause(); go(-1); }
+  if (e.key === ' ') { e.preventDefault(); timer ? pause() : play(); }
+});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', show);
+show(); play();
+</script>
+</body>
+</html>
