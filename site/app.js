@@ -8,17 +8,53 @@ const noteById = new Map(notes.map((n) => [n.topic, n]));
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const catColor = (id) => css(`--c-${id}`) || css('--accent');
 
+// ── 진행 현황 계산 ──
+const catProgress = graph.categories.map((c) => {
+  const items = graph.topics.filter((t) => t.category === c.id);
+  const done = items.filter((t) => t.studied);
+  return { ...c, items, done, pct: items.length ? Math.round((done.length / items.length) * 100) : 0, complete: items.length > 0 && done.length === items.length };
+});
+const meter = (pct, color) => `<span class="meter"><i style="width:${pct}%;background:${color}"></i></span>`;
+
 // ── 사이드바 ──
 const studied = graph.topics.filter((t) => t.studied).length;
 $('#progress').textContent = `${studied}/${graph.topics.length}`;
-$('#tree').innerHTML = graph.categories.map((c) => {
-  const items = graph.topics.filter((t) => t.category === c.id);
-  return `<details open><summary><span class="dot" style="--c:${catColor(c.id)}"></span>${esc(c.name)}
-      <span class="count">${items.filter((t) => t.studied).length}/${items.length}</span></summary>
-    ${items.map((t) => `<a class="file ${t.studied ? 'done' : ''}" href="#/topic/${t.id}" data-id="${t.id}">
-      ${esc(t.title)}<span class="owner">${esc(t.owner ?? '')}</span></a>`).join('')}
-  </details>`;
-}).join('');
+$('#tree').innerHTML = catProgress.map((c) => `<details open><summary><span class="dot" style="--c:${catColor(c.id)}"></span>${esc(c.name)}
+      ${c.complete ? '<span class="badge">완료</span>' : ''}<span class="count">${c.done.length}/${c.items.length}</span></summary>
+    <div class="cat-meter">${meter(c.pct, catColor(c.id))}</div>
+    ${c.items.map((t) => `<a class="file ${t.studied ? 'done' : ''}" href="#/topic/${t.id}" data-id="${t.id}">
+      <span class="check">${t.studied ? '✓' : '○'}</span>${esc(t.title)}<span class="owner">${esc(t.owner ?? '')}</span></a>`).join('')}
+  </details>`).join('');
+
+// ── 현황 ──
+function renderProgress() {
+  const total = graph.topics.length;
+  const pct = total ? Math.round((studied / total) * 100) : 0;
+  const completeCats = catProgress.filter((c) => c.complete);
+  $('#progress-view').innerHTML = `<h1>학습 현황</h1>
+    <div class="overall">
+      <div><span class="big">${pct}%</span><span class="muted"> · ${studied}/${total} 토픽</span></div>
+      ${meter(pct, css('--accent'))}
+      <p class="muted small">완료한 카테고리: ${completeCats.length ? completeCats.map((c) => `<b>${esc(c.name)}</b>`).join(', ') : '아직 없음'} (${completeCats.length}/${catProgress.length})</p>
+    </div>
+    <div class="cards">${catProgress.map((c) => `
+      <section class="card ${c.complete ? 'complete' : ''}" style="--c:${catColor(c.id)}">
+        <header><span class="dot" style="--c:${catColor(c.id)}"></span><b>${esc(c.name)}</b>
+          ${c.complete ? '<span class="badge">완료</span>' : `<span class="muted small">${c.pct}%</span>`}
+          <span class="count">${c.done.length}/${c.items.length}</span></header>
+        ${meter(c.pct, catColor(c.id))}
+        <ul>${c.items.map((t) => {
+          const n = noteById.get(t.id);
+          return `<li class="${t.studied ? 'done' : ''}"><a href="#/topic/${t.id}"><span class="check">${t.studied ? '✓' : '○'}</span>${esc(t.title)}</a>
+            <span class="muted small">${t.studied ? `${esc(n?.author ?? '')} · ${esc(n?.date ?? '')}` : `${esc(t.owner ?? '')} · 세션 ${t.session ?? '-'}`}</span></li>`;
+        }).join('')}</ul>
+      </section>`).join('')}</div>`;
+  $('#links').innerHTML = `<h4>팀원</h4>${schedule.members.map((m) => {
+    const mine = graph.topics.filter((t) => t.owner === m);
+    const done = mine.filter((t) => t.studied).length;
+    return `<div class="side-member"><span>${esc(m)}</span><span class="muted small">${done}/${mine.length}</span>${meter(mine.length ? (done / mine.length) * 100 : 0, css('--accent'))}</div>`;
+  }).join('')}`;
+}
 
 // ── 그래프 ──
 let fg;
@@ -158,6 +194,7 @@ function route() {
   document.querySelectorAll('.tree .file').forEach((a) => a.classList.toggle('active', a.dataset.id === arg));
   if (view === 'topic') renderTopic(decodeURIComponent(arg));
   else if (view === 'schedule') { $('#links').innerHTML = ''; renderSchedule(); }
+  else if (view === 'progress') renderProgress();
   else { $('#links').innerHTML = `<h4>범례</h4><p class="muted small">노드 크기 = 연결 수<br>채워진 노드 = 학습 완료<br>빈 노드 = 학습 전</p>`; requestAnimationFrame(renderGraph); }
 }
 addEventListener('hashchange', route);
