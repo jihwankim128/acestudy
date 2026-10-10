@@ -36,6 +36,11 @@ console.log(JSON.stringify({
   next: next ?? null,
   myProgress: `${mine.filter((t) => t.studied).length}/${mine.length}`,
   expand,
+  categoryProgress: topicsFile.categories.map((c) => {
+    const items = graph.topics.filter((t) => t.category === c.id);
+    const done = items.filter((t) => t.studied).length;
+    return { id: c.id, name: c.name, done, total: items.length, complete: items.length > 0 && done === items.length };
+  }),
   suggestions,
   studiedNotes: notes.map((n) => ({
     topic: n.topic,
