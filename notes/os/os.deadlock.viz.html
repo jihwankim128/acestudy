@@ -1,0 +1,148 @@
+<!doctype html>
+<!--
+  AceStudy 시각화 템플릿 — notes/<category>/<topic-id>.viz.html 로 복사해서 사용.
+  규칙
+  - 단일 HTML 파일 (CSS/JS 인라인). 외부 스크립트는 cdn.jsdelivr.net 만, 버전 고정.
+  - 300KB 이하. 페이지에서 sandbox iframe(스크립트만 허용)으로 열린다 → localStorage, 쿠키, 팝업은 동작하지 않음.
+  - "단계(step)"로 개념이 진행되는 과정을 보여준다. 재생/일시정지/이전/다음 + 단계별 설명 한 줄.
+  - 다크/라이트 모두 보이도록 아래 색 토큰을 쓴다.
+  아래 예시는 "스레드는 코드·힙을 공유하고 스택만 따로 가진다"를 단계별로 보여준다. STEPS 와 draw() 만 바꾸면 된다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>데드락: 보유 락에서 대기 고리까지</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --bg:#1e1e1e; --panel:#262626; --fg:#dadada; --muted:#8f8f8f; --line:#3a3a3a; --accent:#a882ff; --ok:#98c379; --warn:#e5c07b; }
+  @media (prefers-color-scheme: light) { :root { --bg:#fff; --panel:#f6f6f6; --fg:#222; --muted:#6b6b6b; --line:#ddd; --accent:#7c4dff; --ok:#4b9a2a; --warn:#c18401; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 Inter, system-ui, sans-serif; padding:16px; }
+  svg { width:100%; height:auto; display:block; }
+  .bar { display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  button { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:4px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .caption { flex:1; min-width:200px; color:var(--muted); }
+  .step { font-variant-numeric: tabular-nums; color:var(--accent); }
+  text { fill: var(--fg); font-size: 13px; }
+  .muted { fill: var(--muted); font-size: 11px; }
+  rect, circle, path { transition: all .5s ease; }
+
+  h1 { font-size:20px; margin:0 0 8px; }
+  .intro { color:var(--muted); margin:0 0 14px; }
+  .modes { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px; }
+  .modes button[aria-pressed="true"] { border-color:var(--accent);color:var(--accent); }
+  .legend { display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);margin:6px 0; }
+  pre { white-space:pre-wrap;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px;line-height:1.65; }
+  #inspect { min-height:92px; }
+  .explain { color:var(--fg);margin:10px 0; }
+  button:focus-visible { outline:2px solid var(--accent);outline-offset:3px; }
+  @media (prefers-reduced-motion: reduce) { rect,circle,path { transition:none; } }
+</style>
+</head>
+<body>
+<h1>데드락: 보유 락에서 대기 고리까지</h1>
+<p class="intro">스레드가 가진 락 → 기다리는 락 → 그 락의 소유자를 따라가 보세요.</p>
+<div class="modes" aria-label="실험 선택">
+<button data-mode="deadlock" aria-pressed="true">반대 순서 + 타임아웃</button>
+<button data-mode="ordered" aria-pressed="false">같은 순서</button>
+<button data-mode="retry" aria-pressed="false">해제 후 재시도</button>
+<button data-mode="dump" aria-pressed="false">실제 덤프 읽기</button>
+</div>
+<svg id="stage" viewBox="0 0 760 350" role="img" aria-label="두 스레드의 보유 락과 대기 락"></svg>
+<div class="legend"><span>실선: 락 → 보유 스레드</span><span>점선: 스레드 → 필요한 락</span></div>
+<div class="bar">
+<button id="prev" aria-label="이전 단계">◀</button><button id="play" aria-label="재생">▶</button><button id="next" aria-label="다음 단계">▶</button>
+<span class="step" id="idx"></span><span class="caption" id="caption" aria-live="polite"></span>
+</div>
+<p class="explain" id="explain"></p>
+<pre id="inspect" aria-live="polite"></pre>
+<script>
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const scenarios = {
+  deadlock: [
+    { owners:[null,null], waits:[null,null], caption:'두 스레드가 반대 순서로 락을 잡으려 한다.', detail:'A는 1번 → 2번, B는 2번 → 1번. 아직 누구도 락을 잡지 않았다.' },
+    { owners:['A',null], waits:[null,null], caption:'A가 1번 락을 잡는다.', detail:'첫 락을 잡은 뒤, 두 번째 락을 잡기 전에 B로 실행이 넘어간다.' },
+    { owners:['A','B'], waits:[null,null], caption:'B가 2번 락을 잡는다.', detail:'A와 B가 각각 다른 락을 보유한다. 이 상태만으로 아직 데드락은 아니다.' },
+    { owners:['A','B'], waits:[2,1], caption:'A는 2번을, B는 1번을 기다린다.', detail:'A → B → A. 두 스레드 모두 상대의 락 해제가 필요하다. 서버의 해당 송금은 진행하지 못한다.', cycle:true },
+    { owners:['A','B'], waits:[2,1], caption:'3초 뒤 클라이언트는 포기하지만 서버의 고리는 그대로다.', detail:'클라이언트 응답 대기 종료 ≠ 서버 작업 취소·락 해제. 별도 복구가 없는 이 예시에서는 두 스레드가 계속 멈춰 있다.', cycle:true, timeout:true }
+  ],
+  ordered: [
+    { owners:[null,null], waits:[null,null], caption:'송금 방향이 달라도 모두 1번 → 2번 순서로 잠근다.', detail:'락의 순서는 송금 방향이 아니라 공통 계좌 ID 순서로 정한다.' },
+    { owners:['A',null], waits:[null,1], caption:'A가 1번 획득. B는 아무 락도 쥐지 않고 1번을 기다린다.', detail:'B가 2번을 보유하고 있지 않으므로 A의 다음 락 획득을 막지 않는다.' },
+    { owners:['A','A'], waits:[null,1], caption:'A가 2번도 획득하고 송금한다.', detail:'B → A라는 대기는 있지만 A → B는 없다. 대기 자체는 데드락이 아니다.' },
+    { owners:[null,null], waits:[null,null], caption:'A가 두 락을 해제한다.', detail:'A의 송금 완료 후 B가 진행할 수 있다.', completed:['A'] },
+    { owners:['B','B'], waits:[null,null], caption:'B도 1번 → 2번으로 획득하고 송금한다.', detail:'B의 송금 방향은 2번 → 1번이어도 락 획득 순서는 같게 유지한다.', completed:['A'] },
+    { owners:[null,null], waits:[null,null], caption:'B도 해제. 두 송금이 완료된다.', detail:'같은 순서를 모든 획득 경로에서 지켜 순환 대기를 예방했다.', completed:['A','B'] }
+  ],
+  retry: [
+    { owners:['A','B'], waits:[null,null], caption:'A는 1번, B는 2번을 먼저 획득한다.', detail:'이번에는 두 번째 락을 블로킹 대기하지 않고 try-lock으로 즉시 시도한다.' },
+    { owners:['A','B'], waits:[2,1], caption:'둘 다 두 번째 락의 try-lock에 실패한다.', detail:'점선은 실패한 획득 시도다. 실패를 확인하고 바로 첫 락을 해제해야 한다.', trying:true },
+    { owners:[null,null], waits:[null,null], caption:'각자 첫 락을 풀고 재시도 준비.', detail:'락을 쥔 채 기다리는 점유 대기를 끊었다. 실제 송금은 아직 완료되지 않았다.' },
+    { owners:['A','B'], waits:[null,null], caption:'같은 타이밍으로 재시도해 또 각각 첫 락 획득.', detail:'이것은 가능한 실행 순서 중 하나다. 항상 같은 충돌이 생긴다는 뜻은 아니다.' },
+    { owners:[null,null], waits:[null,null], caption:'다시 실패하고 해제. 반복되면 라이브락.', detail:'스레드는 계속 동작하지만 완료된 송금은 0건이다. 데드락 예방과 작업 완료 보장은 다르다.', live:true }
+  ],
+  dump: [
+    { owners:['A','B'], waits:[2,1], caption:'BLOCKED만 보고 확정하지 않는다. 보유·대기 락을 대조한다.', detail:'이 예시에서 1번 락은 <0x000000069754e0b8>, 2번 락은 <0x000000069754e0c8>이다. 주소는 해당 실행의 객체 식별값이다.', dump:0 },
+    { owners:['A','B'], waits:[2,1], caption:'A가 기다리는 2번 락의 소유자는 B.', detail:'A의 waiting to lock과 B의 locked가 같은 객체 주소다. A → B.', dump:1, focus:'A' },
+    { owners:['A','B'], waits:[2,1], caption:'B가 기다리는 1번 락의 소유자는 A.', detail:'B → A를 연결하면 A → B → A. 실제 JVM 덤프도 이 고리를 보고했다.', dump:2, cycle:true }
+  ]
+};
+const stage = document.getElementById('stage');
+const inspect = document.getElementById('inspect');
+function draw(s) {
+ const fg=css('--fg'), line=css('--line'), panel=css('--panel'), accent=css('--accent'), warn=css('--warn'), ok=css('--ok');
+ let html=`<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L0,6 L9,3 z" fill="context-stroke"/></marker></defs>`;
+ const loc={A:{x:24,y:112},B:{x:556,y:112}};
+ const ports={A:[{x:204,y:133},{x:204,y:178}],B:[{x:556,y:133},{x:556,y:178}]};
+ s.owners.forEach((owner,n)=>{
+  if(!owner)return;
+  const p=ports[owner][n], lx=owner==='A'?290:470, ly=n===0?80:245;
+  html+=`<path d="M${lx},${ly} L${p.x},${p.y}" fill="none" stroke="${accent}" stroke-width="3" marker-end="url(#arrow)"/>`;
+ });
+ s.waits.forEach((lock,n)=>{
+  if(!lock)return;
+  const who=n===0?'A':'B', p=ports[who][lock-1], lx=who==='A'?290:470, ly=lock===1?105:220;
+  html+=`<path d="M${p.x},${p.y+8} L${lx},${ly}" fill="none" stroke="${warn}" stroke-width="3" stroke-dasharray="8 5" marker-end="url(#arrow)"/>`;
+ });
+ ['A','B'].forEach((who,n)=>{
+  const p=loc[who], held=s.owners.map((o,i)=>o===who?i+1:null).filter(Boolean).join('・')||'없음';
+  const complete=(s.completed||[]).includes(who);
+  const status=complete&&held==='없음'?'송금 완료':s.waits[n]?(s.trying?'획득 실패':`${s.waits[n]}번 대기`):'대기 없음';
+  html+=`<rect x="${p.x}" y="${p.y}" width="180" height="95" rx="10" fill="${panel}" stroke="${s.focus===who?warn:line}" stroke-width="2"/><text x="${p.x+14}" y="${p.y+26}">스레드 ${who}</text><text x="${p.x+14}" y="${p.y+52}">보유: ${held}</text><text x="${p.x+14}" y="${p.y+76}" style="fill:${complete?ok:fg}">${status}</text>`;
+ });
+ s.owners.forEach((owner,n)=>{
+ const y=n===0?40:205;
+ html+=`<rect x="290" y="${y}" width="180" height="80" rx="10" fill="${panel}" stroke="${owner?accent:line}" stroke-width="2"/><text x="306" y="${y+28}">계좌 ${n+1} 락</text><text x="306" y="${y+55}">소유자: ${owner||'없음'}</text>`;
+ });
+ const status=s.timeout?'클라이언트: 3초 타임아웃 / 서버: 데드락 유지':s.cycle?'대기 고리: A → B → A':s.live?'재시도는 계속 / 완료된 송금: 0':`완료된 송금: ${(s.completed||[]).length}`;
+ html+=`<text x="24" y="326" style="fill:${s.cycle||s.live?warn:fg};font-size:15px">${status}</text>`;
+ stage.innerHTML=html;
+ if(s.dump!==undefined){
+  const snippets=[`"A": waiting to lock <0x000000069754e0c8>
+     locked          <0x000000069754e0b8>
+"B": waiting to lock <0x000000069754e0b8>
+     locked          <0x000000069754e0c8>`, `"A":
+  waiting to lock monitor … (object 0x000000069754e0c8)
+  which is held by "B"
+
+따라서 A → B`, `Found one Java-level deadlock:
+"A": … which is held by "B"
+"B": … which is held by "A"
+
+따라서 A → B → A`];
+  inspect.textContent=snippets[s.dump];
+ }else inspect.textContent=`A: 보유 ${s.owners.map((o,i)=>o==='A'?i+1:null).filter(Boolean).join(', ')||'없음'} / ${s.trying?'실패한 시도':'대기'} ${s.waits[0]||'없음'}
+B: 보유 ${s.owners.map((o,i)=>o==='B'?i+1:null).filter(Boolean).join(', ')||'없음'} / ${s.trying?'실패한 시도':'대기'} ${s.waits[1]||'없음'}`;
+}
+let mode='deadlock', i=0, timer=null;
+function show(){const steps=scenarios[mode],s=steps[i];draw(s);document.getElementById('caption').textContent=s.caption;document.getElementById('explain').textContent=s.detail;document.getElementById('idx').textContent=`${i+1}/${steps.length}`;document.getElementById('prev').disabled=i===0;document.getElementById('next').disabled=i===steps.length-1;}
+function pause(){clearInterval(timer);timer=null;document.getElementById('play').textContent='▶';document.getElementById('play').setAttribute('aria-label','재생');}
+function go(d){i=Math.max(0,Math.min(scenarios[mode].length-1,i+d));show();if(i===scenarios[mode].length-1)pause();}
+function play(){if(i===scenarios[mode].length-1)i=0;show();timer=setInterval(()=>go(1),2200);document.getElementById('play').textContent='❚❚';document.getElementById('play').setAttribute('aria-label','일시정지');}
+document.getElementById('prev').onclick=()=>{pause();go(-1);};document.getElementById('next').onclick=()=>{pause();go(1);};document.getElementById('play').onclick=()=>timer?pause():play();
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{pause();mode=b.dataset.mode;i=0;document.querySelectorAll('[data-mode]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));show();});
+show();
+</script>
+</body>
+</html>
