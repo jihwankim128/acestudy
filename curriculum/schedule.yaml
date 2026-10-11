@@ -132,3 +132,135 @@ sessions:
       jihwankim128: os.scheduling
       simhokyung: os.container
       JYL35: os.page-cache
+  - session: 23
+    category: dist
+    assignments:
+      jihwankim128: dist.circuit-breaker
+      JYL35: dist.bulkhead
+      simhokyung: dist.deadline-propagation
+  - session: 24
+    category: practice
+    assignments:
+      jihwankim128: practice.export-memory-spike
+      JYL35: practice.stale-cache-price
+      simhokyung: practice.deploy-5xx
+  - session: 25
+    category: design
+    assignments:
+      jihwankim128: design.cache-consistency
+      simhokyung: design.architecture-decision-record
+      JYL35: design.storage-growth
+  - session: 26
+    category: dist
+    assignments:
+      JYL35: dist.transactional-outbox
+      jihwankim128: dist.idempotent-consumer
+      simhokyung: dist.backpressure
+  - session: 27
+    category: infra
+    assignments:
+      simhokyung: infra.canary-rollout
+      jihwankim128: infra.artifact-promotion
+      JYL35: infra.autoscaling-lag
+  - session: 28
+    category: db
+    assignments:
+      jihwankim128: db.keyset-pagination
+      simhokyung: db.connection-pool-sizing
+      JYL35: db.transaction-boundary
+  - session: 29
+    category: perf
+    assignments:
+      simhokyung: perf.flame-graph
+      jihwankim128: perf.little-law
+      JYL35: perf.benchmark-pitfalls
+  - session: 30
+    category: dist
+    assignments:
+      simhokyung: dist.fencing-token
+      JYL35: dist.event-ordering
+      jihwankim128: dist.saga-compensation
+  - session: 31
+    category: practice
+    assignments:
+      JYL35: practice.transfer-hang
+      simhokyung: practice.queue-poison-message
+      jihwankim128: practice.connection-pool-exhaustion
+  - session: 32
+    category: perf
+    assignments:
+      JYL35: perf.queueing-delay
+      simhokyung: perf.allocation-gc
+      jihwankim128: perf.load-profile
+  - session: 33
+    category: os
+    assignments:
+      jihwankim128: os.task-cancellation
+      simhokyung: os.thread-pool-starvation
+      JYL35: os.virtual-thread
+  - session: 34
+    category: advanced
+    assignments:
+      JYL35: advanced.online-resharding
+      jihwankim128: advanced.crdt-counter
+      simhokyung: advanced.cdc-rebuild
+  - session: 35
+    category: practice
+    assignments:
+      jihwankim128: practice.partial-order-success
+      JYL35: practice.pagination-duplicates
+      simhokyung: practice.retry-storm
+  - session: 36
+    category: infra
+    assignments:
+      jihwankim128: infra.service-discovery
+      JYL35: infra.health-probes
+      simhokyung: infra.restore-drill
+  - session: 37
+    category: infra
+    assignments:
+      JYL35: infra.rolling-drain
+      jihwankim128: infra.schema-expand-contract
+      simhokyung: infra.config-secrets
+  - session: 38
+    category: design
+    assignments:
+      jihwankim128: design.short-link-identifiers
+      JYL35: design.upload-pipeline
+      simhokyung: design.feed-fanout
+  - session: 39
+    category: design
+    assignments:
+      simhokyung: design.chat-delivery
+      jihwankim128: design.service-boundary
+      JYL35: design.order-state-machine
+  - session: 40
+    category: design
+    assignments:
+      JYL35: design.multi-region-routing
+      jihwankim128: design.requirements-slo
+      simhokyung: design.data-ownership
+  - session: 41
+    category: advanced
+    assignments:
+      jihwankim128: advanced.logical-clock
+      JYL35: advanced.raft-commit
+      simhokyung: advanced.stream-window-watermark
+  - session: 42
+    category: advanced
+    assignments:
+      jihwankim128: advanced.multi-region-write-conflict
+      JYL35: advanced.load-shedding
+      simhokyung: advanced.service-identity
+  - session: 43
+    category: observability
+    assignments:
+      simhokyung: observability.thread-dump
+      JYL35: observability.symptom-alerting
+      jihwankim128: observability.latency-histogram
+  - session: 44
+    category: observability
+    assignments:
+      simhokyung: observability.log-correlation
+      JYL35: observability.distributed-trace
+      jihwankim128: observability.incident-timeline

@@ -34,6 +34,9 @@ categories:
       - { id: os.io-model, title: 블로킹/논블로킹과 epoll, hook: Netty·Node.js 이벤트 루프의 기반 }
       - { id: os.signal-ipc, title: 시그널과 IPC, hook: SIGTERM과 graceful shutdown }
       - { id: os.container, title: namespace와 cgroup, hook: 도커 컨테이너는 결국 프로세스다 }
+      - { id: "os.virtual-thread", title: "가상 스레드(Virtual Thread)", hook: "DB를 기다리는 동시 요청이 늘 때 플랫폼 스레드와 가상 스레드의 비용 비교" }
+      - { id: "os.task-cancellation", title: "스레드 인터럽트와 협력적 취소", hook: "요청을 취소했는데 서버 작업과 락 대기가 남는 이유" }
+      - { id: "os.thread-pool-starvation", title: "스레드 풀 내부 대기와 고갈", hook: "같은 풀에 제출한 하위 작업을 기다리다 전체 작업이 멈추는 상황" }
 
   - id: net
     name: 네트워크
@@ -88,3 +91,101 @@ categories:
       - { id: db.replication, title: 레플리케이션과 복제 지연, hook: 저장 직후 조회했는데 데이터가 없다 }
       - { id: db.partition-shard, title: 파티셔닝과 샤딩, hook: 샤드 키 선택과 핫스팟 }
       - { id: db.nosql-cap, title: NoSQL과 CAP/PACELC, hook: RDB 대신 NoSQL을 고르는 기준 }
+      - { id: "db.connection-pool-sizing", title: "커넥션 풀 크기 산정 (HikariCP)", hook: "DB 처리 용량을 기준으로 풀 크기를 정하고 대기 시간을 측정하기" }
+      - { id: "db.transaction-boundary", title: "트랜잭션 경계와 외부 호출", hook: "외부 API 응답을 기다리는 동안 DB 커넥션과 락을 잡고 있는 코드" }
+      - { id: "db.keyset-pagination", title: "키셋 페이지네이션", hook: "뒤 페이지로 갈수록 느려지는 OFFSET 조회를 고유 정렬 키로 바꾸기" }
+
+  - id: design
+    name: 대규모 아키텍처·시스템 설계
+    stage: design
+    topics:
+      - { id: "design.requirements-slo", title: "요구사항에서 SLO와 제약 도출", hook: "설계 전에 사용자에게 필요한 지연 시간과 실패 허용 범위를 숫자로 정하기" }
+      - { id: "design.storage-growth", title: "데이터 증가량과 보관 기간 설계", hook: "하루 이벤트 수에서 3년 뒤 저장량과 삭제 정책을 계산하기" }
+      - { id: "design.service-boundary", title: "서비스 경계와 모듈 분리", hook: "배포가 서로 발목을 잡는 두 기능을 어느 경계에서 나눌까" }
+      - { id: "design.data-ownership", title: "서비스별 데이터 소유권", hook: "여러 서비스가 같은 테이블을 수정하면서 배포가 함께 깨지는 문제" }
+      - { id: "design.cache-consistency", title: "캐시 무효화와 갱신 순서", hook: "DB 갱신 직후 옛 값이 캐시에 다시 들어오는 실행 순서" }
+      - { id: "design.multi-region-routing", title: "다중 리전 라우팅과 장애 전환", hook: "한 리전이 멈췄을 때 트래픽과 사용자 상태를 어디로 보낼까" }
+      - { id: "design.feed-fanout", title: "피드의 읽기·쓰기 팬아웃", hook: "팔로워가 많은 계정 하나가 피드 생성 비용을 폭증시키는 이유" }
+      - { id: "design.chat-delivery", title: "채팅 전달 확인과 재접속", hook: "수신 확인 전에 연결이 끊어진 메시지를 누락 없이 다시 전달하기" }
+      - { id: "design.short-link-identifiers", title: "단축 URL의 식별자 공간", hook: "짧은 링크 길이와 생성량을 기준으로 충돌·추측 가능성을 판단하기" }
+      - { id: "design.upload-pipeline", title: "대용량 업로드의 처리 경계", hook: "큰 파일 업로드와 후처리가 API 스레드를 오래 점유하지 않게 나누기" }
+      - { id: "design.order-state-machine", title: "주문 상태 전이 설계", hook: "결제 성공과 취소 요청이 교차할 때 허용할 상태 전이를 명시하기" }
+      - { id: "design.architecture-decision-record", title: "아키텍처 결정 기록과 트레이드오프", hook: "현재 트래픽과 제약에서 선택한 구조를 언제 다시 검토할지 기록하기" }
+
+  - id: dist
+    name: 분산 시스템
+    stage: distributed
+    topics:
+      - { id: "dist.deadline-propagation", title: "데드라인 전파와 서버 작업 취소", hook: "상위 요청은 끝났는데 하위 서비스가 계속 일하는 시간 예산 불일치" }
+      - { id: "dist.bulkhead", title: "벌크헤드 패턴과 스레드 풀 격리", hook: "느린 의존 서비스 하나가 정상 API의 실행 자원까지 고갈시키는 장애" }
+      - { id: "dist.circuit-breaker", title: "서킷 브레이커의 상태 전이", hook: "계속 실패하는 의존 서비스로 요청을 언제 중단하고 다시 시험할까" }
+      - { id: "dist.transactional-outbox", title: "트랜잭셔널 아웃박스", hook: "DB 저장은 성공했지만 이벤트 발행은 실패한 경계 처리" }
+      - { id: "dist.idempotent-consumer", title: "메시지 중복 전달과 소비자 멱등성", hook: "처리는 끝났지만 ACK 전에 끊겨 같은 메시지가 다시 도착한 상황" }
+      - { id: "dist.event-ordering", title: "이벤트 순서와 파티션 키", hook: "같은 주문의 결제 이벤트와 취소 이벤트가 다른 순서로 도착하는 문제" }
+      - { id: "dist.saga-compensation", title: "사가의 보상 동작", hook: "재고 예약은 성공했지만 결제에 실패했을 때 되돌릴 범위를 정하기" }
+      - { id: "dist.backpressure", title: "생산자·소비자 간 백프레셔", hook: "소비 속도보다 빠르게 쌓이는 작업을 어느 경계에서 제한할까" }
+      - { id: "dist.fencing-token", title: "분산 락과 펜싱 토큰", hook: "락 임대가 끝난 옛 작업자가 뒤늦게 데이터를 덮어쓰는 상황" }
+
+  - id: infra
+    name: 인프라·배포·운영
+    stage: operations
+    topics:
+      - { id: "infra.health-probes", title: "헬스 체크와 준비 상태", hook: "프로세스는 살아 있지만 새 요청을 받을 준비가 안 된 인스턴스" }
+      - { id: "infra.rolling-drain", title: "롤링 배포와 요청 드레이닝", hook: "배포 중 처리하던 요청을 끊지 않고 새 인스턴스로 전환하기" }
+      - { id: "infra.config-secrets", title: "설정과 비밀값의 배포 경계", hook: "환경별 설정과 인증 키를 코드·이미지에서 분리하고 교체하기" }
+      - { id: "infra.service-discovery", title: "동적 서비스 디스커버리", hook: "인스턴스 교체 뒤 클라이언트가 사라진 주소를 계속 사용하는 상황" }
+      - { id: "infra.autoscaling-lag", title: "오토스케일링 지연과 준비 용량", hook: "트래픽이 급증했지만 새 인스턴스가 준비되기 전에 큐가 쌓이는 문제" }
+      - { id: "infra.restore-drill", title: "백업 복구 훈련과 RPO·RTO", hook: "백업 파일은 있는데 실제로 복구 가능한지와 소요 시간을 확인하기" }
+      - { id: "infra.schema-expand-contract", title: "무중단 스키마 변경", hook: "구버전과 신버전 서버가 함께 동작할 때 컬럼 변경 순서를 정하기" }
+      - { id: "infra.canary-rollout", title: "카나리 배포와 롤백 기준", hook: "일부 사용자에게 새 버전을 노출하고 어떤 지표로 중단할까" }
+      - { id: "infra.artifact-promotion", title: "빌드 산출물과 환경 승격", hook: "테스트한 이미지와 운영에 배포한 이미지가 다른 문제를 막기" }
+
+  - id: observability
+    name: 관측성·진단
+    stage: operations
+    topics:
+      - { id: "observability.thread-dump", title: "스레드 덤프와 락 소유자 추적", hook: "낮은 CPU에서 멈춘 API의 호출 스택과 보유·대기 락을 대조하기" }
+      - { id: "observability.latency-histogram", title: "지연 시간 분포와 히스토그램", hook: "평균 응답 시간은 정상인데 일부 사용자는 계속 느린 상황" }
+      - { id: "observability.distributed-trace", title: "분산 트레이싱과 컨텍스트 전파", hook: "여러 서비스를 거친 요청의 지연이 어느 호출 구간에서 늘었는지 찾기" }
+      - { id: "observability.log-correlation", title: "요청 로그의 상관관계 ID", hook: "재시도와 비동기 작업이 섞인 로그에서 하나의 사용자 작업을 추적하기" }
+      - { id: "observability.symptom-alerting", title: "사용자 증상 기반 알림", hook: "CPU 알림 없이도 요청 실패가 늘어나는 장애를 감지하기" }
+      - { id: "observability.incident-timeline", title: "장애 타임라인과 가설 검증", hook: "증상·변경·증거를 시간순으로 모아 원인 가설을 좁히기" }
+
+  - id: perf
+    name: 성능 엔지니어링
+    stage: operations
+    topics:
+      - { id: "perf.little-law", title: "리틀의 법칙과 용량 산정", hook: "측정한 처리량과 응답 시간으로 시스템 안의 평균 요청 수를 계산하기" }
+      - { id: "perf.queueing-delay", title: "대기열과 포화 직전 지연", hook: "CPU에 여유가 조금 남았는데 대기 시간이 급증하는 구간을 측정하기" }
+      - { id: "perf.load-profile", title: "부하 모델과 도착률", hook: "응답이 느려지면 요청 생성도 느려지는 부하 테스트의 착시" }
+      - { id: "perf.flame-graph", title: "CPU 프로파일과 플레임 그래프", hook: "핫패스의 CPU 시간을 함수와 호출 경로별로 좁히기" }
+      - { id: "perf.allocation-gc", title: "객체 할당과 GC 지연", hook: "같은 처리량에서 임시 객체 증가가 응답 시간 분포에 미치는 영향" }
+      - { id: "perf.benchmark-pitfalls", title: "벤치마크의 워밍업과 측정 오차", hook: "JIT·캐시·측정 환경 때문에 전후 성능 비교가 뒤집히는 실험" }
+
+  - id: practice
+    name: 실제 코드베이스·프로젝트 문제
+    stage: practice
+    topics:
+      - { id: "practice.transfer-hang", title: "송금 API가 응답하지 않는 장애", hook: "CPU는 낮은데 특정 두 계좌의 송금만 끝나지 않고 재시도가 쌓인다" }
+      - { id: "practice.connection-pool-exhaustion", title: "커넥션 풀 고갈로 API가 멈춘 장애", hook: "DB 연결을 기다리는 요청이 늘며 빠른 API도 함께 느려진다" }
+      - { id: "practice.export-memory-spike", title: "대용량 내보내기의 메모리 급증", hook: "조회 결과를 파일로 내보내자 메모리 사용량과 실패 요청이 함께 늘어난다" }
+      - { id: "practice.stale-cache-price", title: "변경한 가격이 다시 옛 값으로 보이는 장애", hook: "가격 수정 후 일부 요청에서 이전 값이 재등장한다" }
+      - { id: "practice.retry-storm", title: "재시도 폭주로 장애가 확대되는 상황", hook: "의존 서비스의 짧은 오류 뒤 요청 수와 지연이 함께 치솟는다" }
+      - { id: "practice.deploy-5xx", title: "배포할 때만 발생하는 5xx", hook: "배포 구간에만 요청 실패가 집중되고 평상시에는 재현되지 않는다" }
+      - { id: "practice.pagination-duplicates", title: "페이지 탐색 중 데이터 중복·누락", hook: "새 데이터가 들어오는 동안 다음 페이지에서 이미 본 항목이 반복된다" }
+      - { id: "practice.queue-poison-message", title: "특정 메시지 뒤 처리 지연이 누적되는 장애", hook: "한 메시지의 반복 실패 뒤 정상 작업까지 대기 시간이 늘어난다" }
+      - { id: "practice.partial-order-success", title: "주문 처리 일부만 성공한 상태", hook: "주문 기록은 남았지만 후속 예약이나 이벤트가 누락된 요청이 발견된다" }
+
+  - id: advanced
+    name: 심화 분산·데이터·아키텍처
+    stage: advanced
+    topics:
+      - { id: "advanced.raft-commit", title: "Raft 과반 복제와 커밋 경계", hook: "리더가 응답하기 직전 종료되었을 때 어떤 로그를 확정할 수 있을까" }
+      - { id: "advanced.logical-clock", title: "논리 시계와 인과관계", hook: "서버 시각이 어긋나도 사건의 선후 관계를 표현하기" }
+      - { id: "advanced.crdt-counter", title: "CRDT 카운터의 병합 규칙", hook: "서로 끊긴 노드의 증가 기록을 재연결 후 중복 없이 병합하기" }
+      - { id: "advanced.multi-region-write-conflict", title: "다중 리전 쓰기 충돌", hook: "같은 레코드를 두 리전에서 수정했을 때 어떤 값을 남길까" }
+      - { id: "advanced.cdc-rebuild", title: "CDC 재처리와 읽기 모델 재구축", hook: "전체 스냅샷과 변경 이벤트를 연결해 검색 인덱스를 다시 만들기" }
+      - { id: "advanced.stream-window-watermark", title: "스트림 윈도와 워터마크", hook: "늦게 도착한 이벤트를 어느 집계 결과까지 반영할지 정하기" }
+      - { id: "advanced.online-resharding", title: "온라인 샤드 이동과 이중 읽기", hook: "서비스를 멈추지 않고 데이터의 담당 샤드를 바꾸기" }
+      - { id: "advanced.load-shedding", title: "과부하 시 요청 거절과 우선순위", hook: "전체 요청을 받아 모두 늦게 실패하는 대신 어떤 작업을 먼저 제한할까" }
+      - { id: "advanced.service-identity", title: "서비스 간 신원과 인증서 수명", hook: "내부망의 호출도 서비스 신원을 검증하고 인증서를 교체하기" }
