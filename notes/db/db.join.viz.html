@@ -1,0 +1,131 @@
+<!doctype html>
+<!-- AceStudy viz-template.html의 색 토큰과 단계 컨트롤에서 시작한 단일 파일 시각화. -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>조인 알고리즘 — DB 안에서 일어나는 일</title>
+<style>
+:root { --bg:#1e1e1e; --panel:#262626; --fg:#dadada; --muted:#aaa; --line:#484848; --accent:#a882ff; --ok:#98c379; --warn:#e5c07b; }
+@media (prefers-color-scheme:light) { :root { --bg:#fff; --panel:#f6f6f6; --fg:#222; --muted:#666; --line:#ccc; --accent:#7c4dff; --ok:#35751b; --warn:#906000; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui,sans-serif; padding:16px; }
+h1 { font-size:19px; margin:0 0 4px; } h2 { font-size:15px; margin:0 0 10px; }
+p { margin:6px 0; } .muted { color:var(--muted); } .small { font-size:13px; }
+.tabs,.bar,.chips { display:flex; gap:8px; flex-wrap:wrap; }
+.tabs { margin:14px 0; } button { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:7px; padding:7px 11px; font:inherit; cursor:pointer; }
+button:hover,button:focus-visible { border-color:var(--accent); } button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); } button:disabled { opacity:.45; cursor:default; }
+.frame { animation:appear .2s ease; } @keyframes appear { from { opacity:.6; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } }
+@media (prefers-reduced-motion:reduce) { .frame { animation:none; } }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.box { min-width:0; padding:12px; border:1px solid var(--line); border-radius:9px; background:var(--panel); }
+.db { border:2px solid var(--accent); margin-top:10px; padding:12px; border-radius:10px; }
+.db-title { color:var(--accent); font-weight:650; margin-bottom:10px; }
+.stat { color:var(--accent); font-weight:650; }
+.chip { padding:5px 9px; border:1px solid var(--line); border-radius:6px; min-width:44px; text-align:center; }
+.hot { border:2px solid var(--warn); padding:4px 8px; color:var(--warn); }
+.match { border-color:var(--ok); color:var(--ok); }
+.arrow { display:block; font-size:11px; line-height:1; height:14px; color:var(--warn); }
+.hash-entry { padding:5px 8px; border:1px solid var(--line); border-radius:5px; margin:4px 0; }
+.results { margin-top:12px; border:1px solid var(--ok); border-radius:8px; padding:10px; }
+.result-row { display:inline-block; color:var(--ok); margin:3px 12px 3px 0; }
+code,pre { font:13px/1.6 ui-monospace,monospace; } pre { white-space:pre-wrap; overflow-wrap:anywhere; margin:8px 0; }
+.tag { display:inline-block; color:var(--warn); border:1px solid var(--warn); border-radius:5px; padding:3px 8px; margin-bottom:10px; }
+.bar { margin-top:14px; align-items:center; } .step { color:var(--accent); font-variant-numeric:tabular-nums; }
+.caption { border-left:3px solid var(--accent); padding:8px 12px; margin-top:12px; min-height:64px; }
+@media (max-width:520px) { body { padding:12px; } .grid { grid-template-columns:1fr; } .tabs button { flex:1 1 135px; } }
+</style>
+</head>
+<body>
+<h1>SQL은 밖에서, 조인은 DB 안에서</h1>
+<p class="muted small">세 장면을 선택하고 이전·다음으로 한 단계씩 확인하세요.</p>
+<nav class="tabs" aria-label="학습 장면">
+<button data-mode="query" aria-pressed="true">① SQL 횟수와 loops</button>
+<button data-mode="hash" aria-pressed="false">② DB 내부 해시 생성</button>
+<button data-mode="merge" aria-pressed="false">③ 정렬과 투 포인터</button>
+</nav>
+<div id="stage"></div>
+<div class="bar">
+<button id="prev" aria-label="이전 단계">◀ 이전</button>
+<button id="play" aria-label="재생">▶ 재생</button>
+<button id="next" aria-label="다음 단계">다음 ▶</button>
+<span class="step" id="idx"></span>
+</div>
+<p id="caption" class="caption" aria-live="polite"></p>
+<script>
+const ORDERS=[{id:1,cid:2},{id:2,cid:4},{id:3,cid:4},{id:4,cid:9}];
+const CUSTOMERS=[1,2,4,7,9];
+const STEPS={
+query:[
+ {sql:0,search:0,caption:'주문 10개와 각 주문의 고객 이름이 필요합니다. SQL 요청 횟수와 DB 내부 탐색을 따로 셉니다.'},
+ {sql:1,search:0,kind:'n',caption:'N+1 방식: 애플리케이션이 주문 10개를 가져오는 SQL을 먼저 한 번 보냅니다.'},
+ {sql:2,search:1,kind:'n',caption:'첫 주문의 고객을 가져오는 별도 SQL을 보냅니다. SQL 요청은 벌써 두 번입니다.'},
+ {sql:11,search:10,kind:'n',caption:'고객을 각각 조회하면 1 + 10 = 11번의 SQL 요청이 됩니다. 반복 요청이 애플리케이션과 DB 사이를 오갑니다.'},
+ {sql:1,search:10,kind:'join',caption:'JOIN SQL은 한 번입니다. 실제 PostgreSQL 실험에서는 그 안의 고객 인덱스 노드가 loops=10으로 실행됐습니다. 이것만으로 N+1이 아닙니다.'},
+ {sql:2,search:null,kind:'in',caption:'IN 일괄 조회는 주문 한 번 + 고객 한 번 = SQL 두 번입니다. 받은 고객 정보를 애플리케이션에서 주문마다 붙입니다. 내부 탐색 횟수는 실행 계획에 따라 다릅니다.'}
+],
+hash:[
+ {build:0,probe:0,result:0,caption:'애플리케이션은 JOIN SQL을 보냅니다. 이 데모에서는 DB가 고객 쪽을 Build 입력으로 선택했다고 가정합니다.'},
+ {build:1,probe:0,result:0,caption:'DB가 고객 1을 읽고 임시 해시 테이블에 넣습니다. 고객 이름도 DB 내부에 보관합니다.'},
+ {build:3,probe:0,result:0,caption:'고객 2와 4도 넣습니다. 키는 고객 ID, 값은 고객 정보입니다.'},
+ {build:5,probe:0,result:0,caption:'고객 5행을 읽어 해시 테이블 준비를 마칩니다. 생성 시간과 메모리 비용이 먼저 들었습니다.'},
+ {build:5,probe:1,result:1,hot:2,caption:'주문 1의 고객 ID 2로 DB 내부 해시 테이블을 조회하고 결과 한 행을 만듭니다.'},
+ {build:5,probe:2,result:2,hot:4,caption:'주문 2의 고객 ID 4를 조회합니다. 해시 생성은 반복하지 않습니다.'},
+ {build:5,probe:3,result:3,hot:4,caption:'주문 3도 고객 4입니다. 같은 고객 정보를 사용하지만 서로 다른 주문이므로 결과 한 행을 더 만듭니다.'},
+ {build:5,probe:4,result:4,hot:9,caption:'주문 4의 고객 9를 연결해 결과 4행을 반환합니다. SQL 요청은 처음부터 끝까지 한 번입니다.'}
+],
+merge:[
+ {sorted:false,oi:-1,ci:-1,result:0,caption:'미정렬 데이터입니다. DB에 정렬 알고리즘이 없는 것이 아닙니다. 이 장면에서는 옵티마이저가 Sort 후 Merge Join을 선택했다고 가정합니다.'},
+ {sorted:true,oi:-1,ci:-1,result:0,caption:'DB 내부 Sort가 양쪽을 고객 ID순으로 정렬합니다. 정렬 시간·메모리와 필요시 디스크 비용도 계획에 포함됩니다. 인덱스가 순서를 제공하면 별도 Sort가 생략될 수도 있습니다.'},
+ {sorted:true,oi:0,ci:0,result:0,caption:'주문 고객 ID 2와 고객 ID 1을 비교합니다. 작은 쪽인 고객 포인터를 앞으로 옮깁니다.'},
+ {sorted:true,oi:0,ci:1,result:1,caption:'2와 2가 같습니다. 주문 1과 고객 2를 연결해 첫 결과를 만듭니다.'},
+ {sorted:true,oi:1,ci:1,result:1,caption:'다음 주문은 고객 4입니다. 현재 고객 2는 작으므로 고객 포인터를 옮깁니다.'},
+ {sorted:true,oi:1,ci:2,result:2,caption:'4와 4가 같습니다. 주문 2를 고객 4와 연결합니다.'},
+ {sorted:true,oi:2,ci:2,result:2,caption:'다음 주문도 고객 4입니다. 고객 4를 유지합니다. 두 포인터를 모두 옮기면 이 주문이 누락됩니다.'},
+ {sorted:true,oi:2,ci:2,result:3,caption:'주문 3도 고객 4와 연결합니다. 고객 정보 하나로 두 주문 결과를 모두 보존했습니다.'},
+ {sorted:true,oi:3,ci:2,result:3,caption:'다음 주문의 고객은 9입니다. 현재 고객 4가 작으므로 고객을 앞으로 읽습니다.'},
+ {sorted:true,oi:3,ci:3,result:3,caption:'고객 7도 주문의 고객 ID 9보다 작습니다. 고객 포인터를 한 번 더 옮깁니다.'},
+ {sorted:true,oi:3,ci:4,result:4,caption:'9와 9를 연결해 4행을 완성합니다. 같은 고객의 주문은 모두 남았습니다. 이 포인터 이동 횟수는 EXPLAIN의 loops와 같은 값이 아닙니다.'}
+]};
+const stage=document.getElementById('stage');
+const chips=(items,active,order=false)=>'<div class="chips">'+items.map((item,k)=>`<div class="chip ${k===active?'hot':''}"><span class="arrow">${k===active?'▼':''}</span>${order?`주문 ${item.id}<br>고객 ${item.cid}`:`고객 ${item}`}</div>`).join('')+'</div>';
+const results=(count)=>'<div class="results"><b>결과 '+count+'행</b><br>'+ORDERS.slice(0,count).map(o=>`<span class="result-row">주문 ${o.id} ↔ 고객 ${o.cid}</span>`).join('')+(count?'':'<span class="muted">아직 연결하지 않았습니다.</span>')+'</div>';
+let mode='query',i=0,timer=null;
+function draw(s) {
+ if(mode==='query') {
+  const inside=s.kind==='join'?'<pre>Nested Loop (rows=10 loops=1)\n  주문 Index Scan (rows=10 loops=1)\n  고객 Index Scan (rows=1 loops=10)</pre><p class="small muted">rows는 실행당 평균 출력, loops는 노드 실행 횟수입니다.</p>':s.kind==='in'?'<pre>SELECT id, name FROM customers\nWHERE id IN (...);</pre><p>내부 탐색 횟수는 계획에 따라 달라집니다.</p>':'<p>각 고객 SQL 안에서 필요한 고객을 찾습니다.</p>';
+  stage.innerHTML=`<div class="frame"><div class="box"><h2>애플리케이션 ↔ DB</h2><p>SQL 요청: <span class="stat" data-count="sql">${s.sql}번</span></p><p>${s.kind==='join'?'주문과 고객을 연결하는 JOIN SQL 한 번':s.kind==='in'?'주문 SQL + 고객 IN SQL, 이후 앱에서 연결':'주문 SQL 뒤 각 고객 SQL을 별도로 요청'}</p></div><div class="db"><div class="db-title">DB 엔진 내부</div><p>고객 인덱스 탐색: <span class="stat">${s.search===null?'실행 계획으로 확인':s.search+'회'}</span></p>${inside}</div><p class="small muted">10개 조회의 loops=10은 실제 실험값입니다. N+1·IN의 요청 횟수는 동일한 목록 API를 구성하는 예시입니다.</p></div>`;
+ } else if(mode==='hash') {
+  stage.innerHTML=`<div class="frame"><div class="box">애플리케이션 → JOIN SQL <span class="stat">1번</span> → DB</div><div class="db"><div class="db-title">DB 엔진 내부: Build → Probe</div><div class="grid"><section class="box"><h2>임시 해시 테이블 · ${s.build} / 5행</h2>${CUSTOMERS.slice(0,s.build).map(id=>`<div class="hash-entry ${id===s.hot?'hot':''}">${id} → 고객 ${id}의 이름</div>`).join('')||'<p class="muted">아직 비어 있습니다.</p>'}</section><section class="box"><h2>주문 입력 · 조회 ${s.probe} / 4행</h2>${chips(ORDERS,s.probe?s.probe-1:-1,true)}</section></div>${results(s.result)}</div><p class="small muted">이 데모는 고객 ID가 유일합니다. DB는 실제로 어느 쪽에 해시를 만들지 비용을 보고 선택하며, 중복 키가 있으면 여러 행을 보존합니다.</p></div>`;
+ } else {
+  const orders=s.sorted?ORDERS:[ORDERS[3],ORDERS[1],ORDERS[0],ORDERS[2]];
+  const customers=s.sorted?CUSTOMERS:[7,2,9,1,4];
+  stage.innerHTML=`<div class="frame"><div class="box">애플리케이션 → JOIN SQL <span class="stat">1번</span> → 옵티마이저가 계획 선택</div><div class="db"><div class="db-title">DB 엔진 내부: ${s.sorted?'정렬된 입력 → Merge Join':'미정렬 입력 → Sort 준비'}</div><span class="tag">${s.sorted?'DB가 조인 키순으로 정렬 완료':'데이터가 아직 정렬되지 않음'}</span><div class="grid"><section class="box"><h2>주문 · 고객 ID순</h2>${chips(orders,s.oi,true)}</section><section class="box"><h2>고객 · ID 유일</h2>${chips(customers,s.ci)}</section></div>${results(s.result)}</div><p class="small muted">교육용 Sort + Merge 장면입니다. 기본 플래너가 항상 병합을 선택하는 것은 아닙니다. 최종 API 결과 순서가 필요하면 ORDER BY로 명시하세요.</p></div>`;
+ }
+}
+function show() {
+ const steps=STEPS[mode]; draw(steps[i]);
+ document.getElementById('caption').textContent=steps[i].caption;
+ document.getElementById('idx').textContent=`${i+1}/${steps.length}`;
+ document.getElementById('prev').disabled=i===0;
+ document.getElementById('next').disabled=i===steps.length-1;
+}
+function pause() { clearInterval(timer); timer=null; const b=document.getElementById('play'); b.textContent='▶ 재생'; b.setAttribute('aria-label','재생'); }
+function go(d) { i=Math.max(0,Math.min(STEPS[mode].length-1,i+d)); show(); }
+function play() {
+ if(i===STEPS[mode].length-1) i=0;
+ show(); const b=document.getElementById('play'); b.textContent='❚❚ 일시정지'; b.setAttribute('aria-label','일시정지');
+ timer=setInterval(()=>{go(1);if(i===STEPS[mode].length-1)pause();},2200);
+}
+document.getElementById('prev').onclick=()=>{pause();go(-1);};
+document.getElementById('next').onclick=()=>{pause();go(1);};
+document.getElementById('play').onclick=()=>timer?pause():play();
+document.querySelectorAll('[data-mode]').forEach(button=>button.onclick=()=>{
+ pause();mode=button.dataset.mode;i=0;
+ document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+ show();
+});
+show();
+</script>
+</body>
+</html>
