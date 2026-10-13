@@ -1,0 +1,169 @@
+<!doctype html>
+<!--
+  AceStudy 시각화 템플릿 — notes/<category>/<topic-id>.viz.html 로 복사해서 사용.
+  규칙
+  - 단일 HTML 파일 (CSS/JS 인라인). 외부 스크립트는 cdn.jsdelivr.net 만, 버전 고정.
+  - 300KB 이하. 페이지에서 sandbox iframe(스크립트만 허용)으로 열린다 → localStorage, 쿠키, 팝업은 동작하지 않음.
+  - "단계(step)"로 개념이 진행되는 과정을 보여준다. 재생/일시정지/이전/다음 + 단계별 설명 한 줄.
+  - 다크/라이트 모두 보이도록 아래 색 토큰을 쓴다.
+  학습자가 선택한 핵심 장면은 "makeData 프레임 제거 후에도 result가 배열을 참조한다"이다.
+  GC 회수 대상이 되는 단계와 실제 회수 단계를 구분한다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>프로세스 · 스택 프레임과 배열의 수명</title>
+<style>
+  :root { --bg:#1e1e1e; --panel:#262626; --fg:#dadada; --muted:#8f8f8f; --line:#3a3a3a; --accent:#a882ff; --ok:#98c379; --warn:#e5c07b; }
+  @media (prefers-color-scheme: light) { :root { --bg:#fff; --panel:#f6f6f6; --fg:#222; --muted:#6b6b6b; --line:#ddd; --accent:#7c4dff; --ok:#4b9a2a; --warn:#c18401; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 Inter, system-ui, sans-serif; padding:8px; }
+  h1 { font-size:16px; margin:0 0 8px; }
+  .code { display:block; min-height:24px; overflow-wrap:anywhere; margin-bottom:8px; }
+  svg { width:100%; display:block; }
+  .bar { display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  button { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:4px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .caption { min-height:44px; margin:10px 0 0; color:var(--fg); }
+  .note { margin:4px 0 0; color:var(--muted); font-size:12px; }
+  button:disabled { opacity:.4; cursor:default; }
+  .step { font-variant-numeric: tabular-nums; color:var(--accent); }
+  text { fill: var(--fg); font-size: 13px; }
+  .muted { fill:var(--muted); font-size:12px; }
+  .arrow { stroke-dasharray:1; animation:trace .45s ease both; }
+  @keyframes trace { from { stroke-dashoffset:1; } to { stroke-dashoffset:0; } }
+  @media (prefers-reduced-motion:reduce) { .arrow { animation:none; } }
+</style>
+</head>
+<body>
+<h1>호출은 끝나도 배열은 남는다</h1>
+<code class="code" id="code"></code>
+<svg id="stage" role="img" aria-label="스택 프레임과 힙 배열의 수명"></svg>
+<div class="bar">
+  <button id="prev" type="button">이전</button><button id="play" type="button">재생</button><button id="next" type="button">다음</button>
+  <span class="step" id="idx"></span>
+</div>
+<p class="caption" id="caption" aria-live="polite"></p>
+<p class="note">논리적인 구조를 나타낸다. 영역 크기는 실제 메모리 비율이 아니다.</p>
+<script>
+const STEPS = [
+  { code:'java -jar server.jar × 2', caption:'같은 프로그램을 두 번 실행하면 독립된 주소 공간을 가진 프로세스 두 개가 생긴다.' },
+  { code:'JVM 프로세스의 논리적인 메모리 영역', caption:'배열이 있는 Java 힙 외에 호출 스택, 클래스 정보, 실행 코드, GC 관리 데이터에도 메모리가 필요하다.' },
+  { code:'makeData(): byte[] data = new byte[1024];', caption:'메서드를 호출하면 프레임이 생긴다. data의 참조와 힙의 배열 자체를 구분한다.' },
+  { code:'byte[] result = makeData(); // 반환 완료', caption:'makeData의 프레임은 제거된다. 호출자의 result가 같은 배열을 참조하므로 배열은 남는다. 프레임 제거를 위해 GC를 기다리지 않는다.' },
+  { code:'요청 처리 예제: cache.add(data);', caption:'다른 예제다. 요청 처리 중 생성한 배열을 캐시에 보관하면 data와 리스트의 원소가 같은 배열을 참조한다.' },
+  { code:'data = null;', caption:'지역 변수 data의 참조만 끊어진다. cache → 리스트 → 배열의 접근 경로는 그대로 남는다.' },
+  { code:'handleRequest() 반환 완료', caption:'요청 처리 프레임이 제거되어도 캐시가 배열을 참조한다. 호출 종료는 배열의 GC 회수를 뜻하지 않는다.' },
+  { code:'cache.clear();', caption:'리스트에서 배열로 향하는 참조를 제거했다. 다른 참조도 없다고 가정하면 배열은 회수 대상이다. 아직 즉시 회수를 보장하지 않는다.' },
+  { code:'이후 GC가 해당 배열을 회수한 시점', caption:'회수된 배열의 공간을 다음 객체에 재사용할 수 있다. 캐시 리스트 자체는 계속 살아 있다.' },
+  { code:'실험: -Xmx32m · 보관한 배열 16 MiB', caption:'macOS arm64 / OpenJDK 25.0.4의 실험에서 프로세스 RSS는 58.75 MiB였다. 힙 상한과 프로세스의 상주 메모리는 서로 다른 값이다.' },
+  { code:'검토: 컨테이너 1 GiB / -Xmx1g', caption:'힙이 상한까지 증가하면 힙 외의 영역에 필요한 여유가 부족할 수 있다. 부하에서 전체 사용량을 관측하고 메모리 예산을 정한다.' },
+];
+const stage = document.getElementById('stage');
+const NS='http://www.w3.org/2000/svg';
+function N(tag, attrs={}, text, parent=stage) {
+  const el=document.createElementNS(NS,tag);
+  Object.entries(attrs).forEach(([k,v])=>el.setAttribute(k,v));
+  if(text!==undefined) el.textContent=text;
+  parent.appendChild(el); return el;
+}
+function T(x,y,text,muted=false) { N('text',{x,y,class:muted?'muted':''},text); }
+function R(x,y,w,h,fill='var(--panel)',dash=false) {
+  N('rect',{x,y,width:w,height:h,rx:6,fill,stroke:'var(--line)','stroke-dasharray':dash?'4 3':'none'});
+}
+function arrow(d,cache=false) {
+  N('path',{d,fill:'none',stroke:cache?'var(--ok)':'var(--accent)','stroke-width':2,pathLength:1,'marker-end':cache?'url(#cache-tip)':'url(#data-tip)',class:'arrow'});
+}
+function markers() {
+  const defs=N('defs');
+  for(const [id,color] of [['data-tip','var(--accent)'],['cache-tip','var(--ok)']]) {
+    const m=N('marker',{id,viewBox:'0 0 10 10',refX:9,refY:5,markerWidth:6,markerHeight:6,orient:'auto'},undefined,defs);
+    N('path',{d:'M 0 0 L 10 5 L 0 10 z',fill:color},undefined,m);
+  }
+}
+function draw(i) {
+  const w=Math.max(256,stage.clientWidth), narrow=w<540;
+  stage.replaceChildren(); markers();
+  const h=(i>=2&&i<=8&&narrow)?405:300;
+  stage.setAttribute('viewBox','0 0 '+w+' '+h); stage.setAttribute('height',h);
+  N('title',{},STEPS[i].code); N('desc',{},STEPS[i].caption);
+  if(i===0) {
+    const bw=narrow?w-20:(w-40)/2;
+    R(10,10,w-20,44); T(22,38,'프로그램 파일: server.jar');
+    for(let p=0;p<2;p++) {
+      const x=narrow?10:10+p*(bw+20), y=narrow?75+p*95:90;
+      R(x,y,bw,75); T(x+12,y+25,'프로세스 '+(p+1));
+      T(x+12,y+49,'각자의 주소 공간·실행 상태',true);
+    }
+    return;
+  }
+  if(i===1||i>=9) {
+    R(10,10,w-20,280,'none');
+    T(22,36,i===9?'JVM 프로세스 · RSS 58.75 MiB':i===10?'컨테이너의 메모리 한도: 1 GiB':'JVM 프로세스');
+    R(22,54,w-44,62); T(34,78,i===9?'Java 힙 상한: 32 MiB':i===10?'Java 힙 상한: 1 GiB':'Java 힙: 객체와 배열');
+    T(34,100,i===9?'보관한 배열 데이터: 16 MiB':'참조가 살아 있으면 객체도 유지',true);
+    R(22,128,w-44,44); T(34,156,'호출 스택 · 지역 변수와 참조');
+    R(22,184,w-44,44); T(34,212,'클래스 정보 · 실행 코드');
+    T(34,256,'GC 관리 데이터 · 기타 JVM 메모리');
+    return;
+  }
+  const stack={x:10,y:36,w:narrow?w-20:180,h:narrow?116:175};
+  const heap={x:narrow?10:225,y:narrow?213:36,w:narrow?w-20:w-235,h:narrow?180:250};
+  R(stack.x,stack.y,stack.w,stack.h,'none'); T(stack.x+12,stack.y+25,'스택 · 호출 기록');
+  R(heap.x,heap.y,heap.w,heap.h,'none'); T(heap.x+12,heap.y+25,'힙 · 객체');
+  const frame={x:stack.x+12,y:stack.y+38,w:145,h:60};
+  if(i<=5) {
+    R(frame.x,frame.y,frame.w,frame.h);
+    T(frame.x+10,frame.y+22,i===2?'makeData()':i===3?'호출자 프레임':'handleRequest()');
+    T(frame.x+10,frame.y+46,i===3?'result → 참조':i===5?'data = null':'data → 참조');
+  } else { T(frame.x,frame.y+28,'호출 프레임 제거됨',true); }
+  if(i===3) T(stack.x+12,narrow?185:stack.y+152,'makeData 프레임: 제거됨',true);
+  const hasList=i>=4;
+  const array={x:w-150,y:narrow?(hasList?326:270):(hasList?213:102),w:125,h:64};
+  const list={x:heap.x+12,y:heap.y+38,w:125,h:58};
+  if(hasList) {
+    const rx=list.x+106, ry=Math.max(18,heap.y-32);
+    T(rx-42,ry,'static cache'); arrow('M '+rx+' '+(ry+5)+' L '+rx+' '+(list.y-5),true);
+    R(list.x,list.y,list.w,list.h); T(list.x+10,list.y+22,'ArrayList');
+    T(list.x+10,list.y+44,i>=7?'비어 있음':'[0] → 참조',true);
+  }
+  if(i<8) {
+    R(array.x,array.y,array.w,array.h,'var(--panel)',i===7);
+    T(array.x+10,array.y+25,'byte[]');
+    T(array.x+10,array.y+48,i===7?'회수 대상':'그대로 존재',true);
+    if(i===2||i===3||i===4) {
+      const sx=frame.x+frame.w, sy=frame.y+34, tx=array.x+90, ty=array.y-5;
+      const cx=narrow?w-8:sx+35;
+      arrow('M '+sx+' '+sy+' C '+cx+' '+sy+', '+cx+' '+(ty-30)+', '+tx+' '+ty);
+    }
+    if(i>=4&&i<=6) {
+      const sx=list.x+65, sy=list.y+list.h, tx=array.x+32, ty=array.y-5;
+      arrow('M '+sx+' '+sy+' C '+sx+' '+(ty-22)+', '+tx+' '+(ty-22)+', '+tx+' '+ty,true);
+    }
+  } else { T(heap.x+12,heap.y+146,'배열 공간 회수 · 재사용 가능',true); }
+}
+// 템플릿의 단계·재생 컨트롤을 사용한다. 선택한 핵심 장면에서 시작한다.
+let i=3, timer=null;
+function show() {
+  draw(i);
+  document.getElementById('code').textContent=STEPS[i].code;
+  document.getElementById('caption').textContent = STEPS[i].caption;
+  document.getElementById('idx').textContent=(i+1)+' / '+STEPS.length;
+  document.getElementById('prev').disabled=i===0;
+  document.getElementById('next').disabled=i===STEPS.length-1;
+}
+function pause() { clearInterval(timer);timer=null;document.getElementById('play').textContent='재생'; }
+function go(d) { i=Math.max(0,Math.min(STEPS.length-1,i+d));show(); }
+function play() {
+  if(i===STEPS.length-1)i=0;
+  show();document.getElementById('play').textContent='일시정지';
+  timer=setInterval(()=>{go(1);if(i===STEPS.length-1)pause();},3000);
+}
+document.getElementById('prev').onclick=()=>{pause();go(-1);};
+document.getElementById('next').onclick=()=>{pause();go(1);};
+document.getElementById('play').onclick=()=>timer?pause():play();
+new ResizeObserver(show).observe(stage); show();
+</script>
+</body>
+</html>
