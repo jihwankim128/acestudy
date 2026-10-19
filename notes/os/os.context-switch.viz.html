@@ -1,0 +1,246 @@
+<!doctype html>
+<!-- AceStudy viz-template.html의 색 토큰과 단계 컨트롤에서 확장. 외부 의존성 없음. -->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>컨텍스트 스위칭 — 실행 흐름과 CPU 시간</title>
+<style>
+
+  :root { --bg:#1e1e1e; --panel:#262626; --fg:#dadada; --muted:#8f8f8f; --line:#3a3a3a; --accent:#a882ff; --ok:#98c379; --warn:#e5c07b; }
+  @media (prefers-color-scheme: light) { :root { --bg:#fff; --panel:#f6f6f6; --fg:#222; --muted:#6b6b6b; --line:#ddd; --accent:#7c4dff; --ok:#4b9a2a; --warn:#c18401; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 Inter, system-ui, sans-serif; padding:16px; }
+  svg { width:100%; height:auto; display:block; }
+  .bar { display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  button { background:var(--panel); color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:4px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  .caption { flex:1; min-width:200px; color:var(--muted); }
+  .step { font-variant-numeric: tabular-nums; color:var(--accent); }
+  text { fill: var(--fg); font-size: 13px; }
+  .muted { fill: var(--muted); font-size: 11px; }
+  rect, circle, path { transition: all .5s ease; }
+
+  :root { --blue:#81b8f3; --red:#ee9b92; }
+  @media (prefers-color-scheme: light) { :root { --blue:#2466a2; --red:#b54138; } }
+  body { max-width:1000px; margin:auto; padding:20px; }
+  h1 { font-size:23px; line-height:1.3; margin:0 0 8px; }
+  h2 { font-size:17px; margin:0 0 8px; }
+  h3 { font-size:14px; margin:0 0 10px; }
+  p { margin:8px 0; }
+  .intro, .muted-text { color:var(--muted); }
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 14px; }
+  button { padding:8px 13px; min-height:40px; }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+  button[aria-pressed="true"] { color:var(--accent); border-color:var(--accent); }
+  button:disabled { opacity:.4; cursor:default; }
+  .frame { border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .topline { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .badge { display:inline-block; color:var(--accent); border:1px solid var(--accent); border-radius:20px; padding:3px 10px; font-size:12px; }
+  #scene-note { min-height:42px; color:var(--muted); margin:0 0 14px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:9px; padding:14px; min-width:0; }
+  .cpu { border:2px solid var(--accent); }
+  .hot { border-color:var(--warn); animation:appear .4s ease; }
+  .values { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:12px 0 0; font-variant-numeric:tabular-nums; }
+  .values dt { color:var(--muted); }
+  .values dd { margin:0; overflow-wrap:anywhere; font-family:ui-monospace,monospace; }
+  .memory { margin-top:12px; }
+  .thread { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .stack { border-left:3px solid var(--blue); padding-left:10px; margin-top:12px; }
+  .stack p { margin:3px 0; }
+  .flow { display:flex; align-items:center; gap:10px; padding:13px 0; color:var(--warn); min-height:50px; }
+  .dot { width:9px; height:9px; background:var(--warn); border-radius:50%; flex-shrink:0; animation:travel 1.4s infinite; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .chip { display:inline-grid; place-items:center; min-width:31px; height:31px; border:1px solid var(--line); border-radius:5px; font-size:12px; }
+  .chip.running { background:var(--accent); border-color:var(--accent); color:var(--bg); font-weight:700; }
+  .chip.waiting { color:var(--muted); }
+  .core { display:flex; justify-content:space-between; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .core strong { color:var(--accent); }
+  .core.switch strong { color:var(--warn); }
+  .metrics { display:flex; flex-wrap:wrap; gap:10px; margin:12px 0; }
+  .metric { flex:1; min-width:120px; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .metric strong { display:block; font-size:25px; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .metric span { color:var(--muted); font-size:12px; }
+  .timechart { margin:14px 0 2px; }
+  .axis { margin-left:54px; display:flex; justify-content:space-between; font-size:11px; color:var(--muted); }
+  .track { display:flex; align-items:center; gap:8px; margin-top:10px; }
+  .track-label { width:46px; flex-shrink:0; font-size:12px; }
+  .segments { flex:1; display:flex; overflow:hidden; min-height:32px; border-radius:5px; border:1px solid var(--line); }
+  .seg { display:flex; align-items:center; justify-content:center; min-width:0; font-size:12px; }
+  .seg.compute { background:var(--accent); color:var(--bg); }
+  .seg.compute.alt { background:var(--blue); }
+  .seg.wait { color:var(--muted); background:var(--panel); }
+  .seg.overhead { color:var(--bg); background:var(--warn); }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; color:var(--muted); font-size:12px; margin-top:12px; }
+  .key { display:inline-block; width:9px; height:9px; margin-right:5px; background:var(--accent); }
+  .key.idle { background:var(--panel); border:1px solid var(--line); }
+  .key.cost { background:var(--warn); }
+  .takeaway { border-left:3px solid var(--accent); padding:8px 12px; margin-top:14px; }
+  .caption { color:var(--fg); line-height:1.7; }
+  .bar { align-items:flex-start; border-top:1px solid var(--line); padding-top:14px; margin-top:16px; }
+  .controls { display:flex; gap:6px; }
+  .caption-wrap { flex:1; min-width:200px; }
+  .step { display:block; font-size:12px; margin-bottom:4px; }
+  .foot { font-size:12px; color:var(--muted); margin-top:14px; }
+  @keyframes appear { from { opacity:.4; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes travel { 0%,100% { transform:translateX(0); opacity:.4; } 50% { transform:translateX(5px); opacity:1; } }
+  @media (max-width:560px) {
+    body { padding:12px; } h1 { font-size:20px; } .frame { padding:12px; }
+    .grid, .thread { grid-template-columns:1fr; } .seg { font-size:10px; }
+    .metric { min-width:105px; } .metric strong { font-size:21px; }
+  }
+  @media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation:none!important; transition:none!important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>컨텍스트 스위칭</h1>
+  <p class="intro">OS가 실행할 스레드를 선택하고, CPU가 그 스레드의 명령어를 실행합니다.</p>
+</header>
+<nav class="tabs" aria-label="비교할 장면">
+  <button type="button" data-scene="swap" aria-pressed="true">1. 교대 순간</button>
+  <button type="button" data-scene="cpu" aria-pressed="false">2. CPU 계산만</button>
+  <button type="button" data-scene="io" aria-pressed="false">3. DB 대기</button>
+</nav>
+<main class="frame">
+  <div class="topline"><h2 id="scene-title"></h2><span class="badge" id="scene-badge"></span></div>
+  <p id="scene-note"></p>
+  <div id="stage" role="group" aria-label="현재 단계의 실행 상태"></div>
+  <div class="bar">
+    <div class="controls">
+      <button type="button" id="prev" aria-label="이전 단계">◀</button>
+      <button type="button" id="play" aria-label="자동 재생">재생</button>
+      <button type="button" id="next" aria-label="다음 단계">▶</button>
+    </div>
+    <div class="caption-wrap" aria-live="polite"><span class="step" id="idx"></span><span class="caption" id="caption"></span></div>
+  </div>
+</main>
+<p class="foot">개념 모형입니다. 코어 하나에 스레드 하나를 실행한다고 가정합니다. SMT·DB 용량·실제 스케줄러 정책은 생략합니다.</p>
+<script>
+const SCENES = {
+  swap: {
+    title: '스택은 남겨두고, 실행 상태를 바꿉니다', badge: '코어 1개 · 같은 프로세스',
+    note: 'PC는 복귀할 명령어 위치, SP는 스택 위치, R0는 계산 중간값을 담은 레지스터의 예입니다. 주소와 값은 설명용입니다.',
+    steps: [
+      'A가 실행 중입니다. CPU에는 A의 PC·SP·계산 중간값이 있고, A와 B의 스택은 이미 메모리에 있습니다.',
+      'OS가 제어권을 얻어 B를 실행하기로 선택합니다. 스케줄러도 CPU에서 실행되는 코드입니다.',
+      'A의 실행 상태를 보존합니다. 스택 전체를 복사하거나, 모든 스레드의 상태를 한꺼번에 저장하지 않습니다.',
+      'B의 저장된 실행 상태를 복원합니다. CPU가 B의 스택을 가리키게 됩니다.',
+      'B가 자기 실행 위치에서 명령어를 이어갑니다. A의 스택과 저장된 상태는 메모리에 남아 있습니다.',
+      '이후 B의 상태를 보존하고 A의 상태를 복원하면, A가 중단했던 위치에서 계산을 이어갈 수 있습니다.'
+    ]
+  },
+  cpu: {
+    title: '스레드 20개가 코어 20개를 만들지는 않습니다', badge: '코어 2개 · CPU 계산만',
+    note: '요청마다 CPU 계산 10ms가 필요합니다. 마지막 단계의 부가 비용 10%는 측정값이 아닌 계산용 가정입니다.',
+    steps: [
+      '스레드 A와 B가 코어 2개를 이미 채우고 있습니다. 부가 비용이 없다면 이상적인 상한은 초당 200개입니다.',
+      '스레드를 20개로 늘려도 동시에 실행하는 것은 2개입니다. 나머지 준비된 18개는 차례를 기다립니다.',
+      'A→C, B→D로 교대하는 동안 상태 보존·복원과 스케줄러 실행에 CPU 시간을 씁니다.',
+      'C와 D가 실행해도 계산하는 코어는 여전히 2개입니다. 다른 데이터의 실행으로 캐시 재사용도 줄 수 있습니다.',
+      '전체 CPU 시간의 10%가 부가 작업이라면 요청 계산에는 90%만 씁니다. 2 × 1,000 × 0.9 ÷ 10 = 초당 180개입니다.'
+    ]
+  },
+  io: {
+    title: 'A가 기다리는 동안 CPU는 B를 실행할 수 있습니다', badge: '코어 1개 · 계산 10ms + DB 대기 90ms',
+    note: '정상 상태의 이상적인 처리량을 비교합니다. 충분한 요청과 DB 용량이 있고, 이 장면에서는 교대 비용을 무시합니다.',
+    steps: [
+      '작업 스레드가 1개라면 A가 먼저 10ms 계산합니다. 다음 90ms는 DB 응답이 필요해 계산을 진행할 수 없습니다.',
+      '다른 준비된 작업이 없는 모형에서는 CPU가 남은 90ms를 쉽니다. 요청 하나에 100ms이므로 초당 10개입니다.',
+      '이제 작업 스레드 10개인 조건과 비교합니다. A가 DB를 기다리는 동안 B가 다음 10ms를 계산할 수 있습니다.',
+      'B 다음에는 C부터 J까지 계산합니다. CPU는 한 번에 하나만 계산하면서 여러 요청의 DB 대기를 겹칩니다.',
+      '100ms에 A의 DB 대기가 끝나면 A가 다음 요청의 계산을 시작할 수 있습니다. 각 요청의 90ms 대기는 사라지지 않습니다.',
+      'CPU의 1,000ms를 요청 계산으로 채우면 1,000 ÷ 10 = 초당 100개에 접근합니다. 요청이 기다린 시간과 CPU를 쓴 시간을 구분하세요.'
+    ]
+  }
+};
+let scene = 'swap', i = 0, timer = null;
+const stage = document.getElementById('stage');
+const values = (pc, sp, r0) => `<dl class="values"><dt>PC</dt><dd>${pc}</dd><dt>SP</dt><dd>${sp}</dd><dt>R0</dt><dd>${r0}</dd></dl>`;
+const metric = (value, label) => `<div class="metric"><strong>${value}</strong><span>${label}</span></div>`;
+const flow = (label) => `<div class="flow"><span class="dot" aria-hidden="true"></span><span>${label}</span></div>`;
+const track = (label, segments) => `<div class="track"><span class="track-label">${label}</span><div class="segments">${segments}</div></div>`;
+const segment = (width, label, kind='compute') => `<span class="seg ${kind}" style="width:${width}%">${label}</span>`;
+
+function drawSwap() {
+  const active = i === 0 || i === 5 ? 'A' : i === 4 ? 'B' : 'OS';
+  const regs = i >= 3 && i <= 4 ? values(i === 4 ? '401' : '400', '0xB0', i === 4 ? '28' : '27') : i === 1 || i === 2 ? '<p class="muted-text">커널 코드 실행 중<br>사용자 실행 상태는 보존 절차를 거칩니다.</p>' : values('120', '0xA0', '13');
+  const action = ['CPU에서 A 실행', '스케줄러가 B 선택', 'A 상태 → 메모리의 저장 영역', 'B 저장 상태 → CPU', 'CPU에서 B 실행', 'B 보존 → A 복원 → A 재개'][i];
+  return `<div class="grid">
+    <section class="card cpu"><h3>CPU · 현재 실행: ${active}</h3>${regs}</section>
+    <section class="card"><h3>OS가 고르는 실행 흐름</h3><p>A: ${active === 'A' ? '실행 중' : '준비 / 상태 보존'}</p><p>B: ${active === 'B' ? '실행 중' : '준비 / 저장 상태 보유'}</p><p class="muted-text">여기서는 I/O 대기 없이 A와 B를 교대합니다.</p></section>
+  </div>${flow(action)}
+  <section class="card memory"><h3>메모리 · 같은 프로세스의 주소 공간</h3>
+    <div class="thread">
+      <div class="card ${i === 2 || i === 5 ? 'hot' : ''}"><h3>A의 실행 상태 ${i >= 2 ? '보존됨' : '보존 대상'}</h3>${values('120','0xA0','13')}<div class="stack"><p><strong>A의 스택 · 메모리에 유지</strong></p><p>호출 기록 / 지역 변수</p><p class="muted-text">SP 0xA0가 가리키는 위치</p></div></div>
+      <div class="card ${i === 3 || i === 4 ? 'hot' : ''}"><h3>B의 저장된 실행 상태</h3>${values(i === 5 ? '401' : '400','0xB0',i === 5 ? '28' : '27')}<div class="stack"><p><strong>B의 스택 · 메모리에 유지</strong></p><p>호출 기록 / 지역 변수</p><p class="muted-text">SP 0xB0가 가리키는 위치</p></div></div>
+    </div>
+  </section><p class="takeaway">보존·복원의 세부 위치와 순서는 CPU·OS 구현에 따라 다릅니다. 그림은 실행 상태를 바꾸는 개념 순서입니다.</p>`;
+}
+
+function drawCpu() {
+  const count = i === 0 ? 2 : 20;
+  const running = i < 2 ? [0,1] : i === 2 ? [] : [2,3];
+  const names = 'ABCDEFGHIJKLMNOPQRST';
+  let chips = '';
+  for (let n=0;n<count;n++) chips += `<span class="chip ${running.includes(n) ? 'running' : 'waiting'}">${names[n]}</span>`;
+  const cores = [0,1].map(n => `<div class="core ${i === 2 ? 'switch' : ''}"><span>코어 ${n+1}</span><strong>${i === 2 ? '교대 코드 실행 중' : names[running[n]]+'의 명령어 실행'}</strong></div>`).join('');
+  const result = i === 4;
+  const chart = result ? `<div class="timechart"><div class="axis"><span>전체 CPU 시간 0%</span><span>100%</span></div>${track('코어 1', segment(90,'요청 계산 90%') + segment(10,'10%','overhead'))}${track('코어 2', segment(90,'요청 계산 90%') + segment(10,'10%','overhead'))}<div class="legend"><span><i class="key"></i>요청 계산</span><span><i class="key cost"></i>교대 등 부가 작업（가정）</span></div></div>` : '';
+  return `<div class="grid"><section class="card cpu"><h3>CPU · 동시에 계산할 자리 2개</h3>${cores}</section><section class="card"><h3>실행 가능한 스레드 ${count}개</h3><div class="chips">${chips}</div><p class="muted-text">${i === 2 ? '교대 중에는 OS 코드가 CPU를 사용합니다.' : '색이 채워진 2개가 실행 중입니다.'}</p></section></div>
+    <div class="metrics">${metric('2개','계산 가능한 코어 수')}${metric(i === 0 ? '0개' : i === 2 ? '교대 중' : '18개','실행 차례를 기다리는 스레드')}${metric(result ? '180개/초' : '200개/초',result ? '부가 비용 10% 가정 시 상한' : '부가 비용이 없는 이상적 상한')}</div>${chart}
+    <p class="takeaway">${result ? '부가 비용을 배분한 요청당 코어 점유 시간은 10 ÷ 0.9 ≈ 11.11ms입니다. 실행 대기를 포함한 실제 응답 시간과는 구분합니다.' : '스레드 수만으로 교대 횟수나 처리량 감소를 확정할 수 없습니다. 같은 부하에서 관측해야 합니다.'}</p>`;
+}
+
+function drawIo() {
+  const multi = i >= 2;
+  const active = i === 0 ? 'A' : i === 1 ? '없음' : i === 2 ? 'B' : i === 3 ? 'J' : 'A';
+  const cpuSegments = multi ? [...'ABCDEFGHIJ'].map((t,n) => segment(10,t,n%2 ? 'compute alt' : 'compute')).join('') : segment(10,'A') + segment(90,i === 0 ? '이후 다른 준비 작업이 없다면 CPU 휴식' : 'CPU 휴식','wait');
+  const aSegments = segment(10,'계산') + segment(90,'A의 DB 대기 90ms','wait');
+  const bSegments = segment(10,'','wait') + segment(10,'계산','compute alt') + segment(80,'B의 DB 대기 계속','wait');
+  const rows = track('CPU',cpuSegments) + track('A',aSegments) + (multi ? track('B',bSegments) : '');
+  const states = i <= 1 ? '작업 스레드 A 하나인 조건' : i === 2 ? 'B 실행 · A는 DB 대기 · C~J는 준비' : i === 3 ? 'J 실행 · A~I는 DB 대기' : '100ms 시점: A의 DB 응답 완료, 다음 요청 시작';
+  return `<div class="grid"><section class="card cpu"><h3>코어 1개 · 현재 실행</h3><p style="font-size:24px;color:var(--accent);margin:12px 0">${active === '없음' ? '다른 준비 작업이 없어 쉼' : '스레드 '+active}</p><p class="muted-text">${states}</p></section><section class="card"><h3>작업 스레드 ${multi ? '10' : '1'}개</h3><p>A의 다음 계산은 DB 응답 후에 가능합니다.</p><p>${multi ? '그동안 다른 스레드의 요청을 계산합니다.' : '이 모형에는 대신 실행할 작업이 없습니다.'}</p><p class="muted-text">블로킹 대기 중인 A는 CPU에서 계속 계산하지 않습니다.</p></section></div>
+    <div class="timechart"><div class="axis"><span>0ms</span><span>50ms</span><span>100ms</span></div>${rows}<div class="legend"><span><i class="key"></i>CPU 계산（각 10ms）</span><span><i class="key idle"></i>대기 / CPU 휴식</span></div><p class="muted-text">${multi ? '스레드 10개 조건의 첫 100ms 배치입니다. B의 대기는 그림 밖 110ms까지 이어집니다.' : '스레드 1개 조건의 100ms 배치입니다.'}</p></div>
+    <div class="metrics">${metric(multi ? '100%' : '10%','이상적인 CPU 계산 비율')}${metric(multi ? '100개/초' : '10개/초','정상 상태의 이상적 처리량')}${metric('90ms','각 요청의 DB 대기（그대로）')}</div>
+    <p class="takeaway">${i >= 4 ? 'A는 100ms에 첫 요청을 마치고 다음 요청을 시작합니다. 정상 상태에서는 이후 10ms마다 한 요청이 끝날 수 있습니다.' : '대기가 길어도 그 시간 전체를 CPU 계산으로 소비하는 것은 아닙니다. 다른 준비된 스레드가 그 자리를 쓸 수 있습니다.'}</p>`;
+}
+
+function pause() {
+  clearInterval(timer); timer = null;
+  document.getElementById('play').textContent = '재생';
+  document.getElementById('play').setAttribute('aria-label','자동 재생');
+}
+function show() {
+  const s = SCENES[scene];
+  document.getElementById('scene-title').textContent = s.title;
+  document.getElementById('scene-badge').textContent = s.badge;
+  document.getElementById('scene-note').textContent = s.note;
+  stage.innerHTML = scene === 'swap' ? drawSwap() : scene === 'cpu' ? drawCpu() : drawIo();
+  document.getElementById('idx').textContent = `${i+1} / ${s.steps.length}`;
+  document.getElementById('caption').textContent = s.steps[i];
+  document.getElementById('prev').disabled = i === 0;
+  document.getElementById('next').disabled = i === s.steps.length-1;
+  document.querySelectorAll('[data-scene]').forEach(b => b.setAttribute('aria-pressed',String(b.dataset.scene === scene)));
+}
+function go(d) { i = Math.max(0,Math.min(SCENES[scene].steps.length-1,i+d)); show(); }
+function play() {
+  if (i === SCENES[scene].steps.length-1) i=0;
+  show();
+  document.getElementById('play').textContent = '일시정지';
+  document.getElementById('play').setAttribute('aria-label','자동 재생 일시정지');
+  timer = setInterval(() => {
+    if (i === SCENES[scene].steps.length-1) { pause(); return; }
+    go(1);
+    if (i === SCENES[scene].steps.length-1) pause();
+  },2600);
+}
+document.getElementById('prev').onclick = () => { pause(); go(-1); };
+document.getElementById('next').onclick = () => { pause(); go(1); };
+document.getElementById('play').onclick = () => timer ? pause() : play();
+document.querySelectorAll('[data-scene]').forEach(b => b.onclick = () => { pause(); scene=b.dataset.scene; i=0; show(); });
+show();
+</script>
+</body>
+</html>
