@@ -118,17 +118,46 @@ function answerBox(e, scope) {
   const { item, group } = e;
   const wrap = document.createElement('div');
   const id = `${scope}-${item.id}`;
-  wrap.innerHTML = `<label class="label-sm" for="${id}">${group.kind === 'coding' ? '내 풀이' : '내 답안'}</label>
-    <textarea id="${id}" class="${group.kind === 'coding' ? 'mono' : group.kind === 'quiz' ? 'short' : ''}" maxlength="20000"
-      data-draft="${item.id}" ${group.kind === 'coding' ? 'spellcheck="false"' : ''}></textarea>
-    <div class="actions"><button class="btn" type="button">제출</button><span class="status" aria-live="polite"></span></div>
+  const coding = group.kind === 'coding';
+  wrap.innerHTML = `<label class="label-sm" for="${id}">${coding ? 'solution 함수 구현 (Java)' : '내 답안'}</label>
+    <textarea id="${id}" class="${coding ? 'mono' : group.kind === 'quiz' ? 'short' : ''}" maxlength="20000"
+      data-draft="${item.id}" ${coding ? 'spellcheck="false"' : ''}></textarea>
+    <div class="actions"><button class="btn" type="button">제출</button>
+      ${coding ? '<button class="btn ghost reset" type="button">처음 코드로 되돌리기</button>' : ''}
+      <span class="status" aria-live="polite"></span></div>
     <details class="quiz"><summary>${group.kind === 'coding' ? '접근법과 모범 풀이' : '모범답안'}</summary><div class="ans"></div></details>`;
   const ta = wrap.querySelector('textarea');
-  ta.value = local.get(`toss-draft:${item.id}`) || '';
-  ta.addEventListener('input', () => {
+  // 코딩은 프로그래머스처럼 solution 메서드 틀이 채워진 상태에서 시작한다
+  ta.value = local.get(`toss-draft:${item.id}`) || (coding ? item.template : '');
+  const save = () => {
     local.set(`toss-draft:${item.id}`, ta.value);
     document.querySelectorAll(`[data-draft="${item.id}"]`).forEach((t) => { if (t !== ta) t.value = ta.value; });
-  });
+  };
+  ta.addEventListener('input', save);
+  if (coding) {
+    // Tab 은 들여쓰기 4칸. 다음 칸으로 이동하려면 Esc 후 Tab
+    let escaped = false;
+    ta.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') { escaped = true; return; }
+      if (ev.key !== 'Tab' || ev.shiftKey || ev.altKey || ev.ctrlKey || ev.metaKey || escaped) { escaped = false; return; }
+      ev.preventDefault();
+      ta.setRangeText('    ', ta.selectionStart, ta.selectionEnd, 'end');
+      save();
+    });
+    const reset = wrap.querySelector('.reset');
+    reset.addEventListener('click', () => {
+      if (ta.value !== item.template && reset.dataset.armed !== '1') {
+        reset.dataset.armed = '1';
+        reset.textContent = '지금 코드를 지울까요? 한 번 더 누르세요';
+        setTimeout(() => { reset.dataset.armed = ''; reset.textContent = '처음 코드로 되돌리기'; }, 3000);
+        return;
+      }
+      reset.dataset.armed = '';
+      reset.textContent = '처음 코드로 되돌리기';
+      ta.value = item.template;
+      save();
+    });
+  }
   const btn = wrap.querySelector('.btn');
   btn.addEventListener('click', () => submit(item.id, ta, btn, wrap.querySelector('.status')));
   // 펼칠 때 채워서, 답을 쓰기 전에 실수로 내용이 보이는 일을 줄인다
@@ -146,14 +175,25 @@ function answerBox(e, scope) {
   return wrap;
 }
 
+// 코딩은 프로그래머스 문제 화면과 같은 순서: 문제 설명, 제한사항, 입출력 예 표, 입출력 예 설명
+function codingHtml(item) {
+  const cols = item.examples[0].args.map(([name]) => name);
+  const rows = item.examples.map((ex) => `<tr>${ex.args.map(([, v]) => `<td><code>${esc(v)}</code></td>`).join('')}
+    <td><code>${esc(ex.result)}</code></td></tr>`).join('');
+  return `<h3 class="sec">문제 설명</h3><div class="q-body">${item.body}</div>
+    <h3 class="sec">제한사항</h3><ul class="limits">${item.limits}</ul>
+    <h3 class="sec">입출력 예</h3>
+    <div class="io-tbl"><table><thead><tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}<th>result</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <h3 class="sec">입출력 예 설명</h3><div class="q-body">${item.explain}</div>`;
+}
+
 function questionHead(e) {
-  const { item, group, no } = e;
+  const { item, group } = e;
   const chips = group.kind === 'quiz' ? [item.type] : item.chips;
   const isCase = group.kind === 'coding' || item.case;
   return `<div class="props">${chips.map((c) => `<span class="tag">${esc(c)}</span>`).join('')}
       ${isCase ? `<span class="tag case">${group.kind === 'coding' ? esc(item.case) : '토스증권 사례'}</span>` : ''}</div>
-    <div class="q-body">${group.kind === 'coding' ? item.body : `<p>${item.q}</p>`}</div>
-    ${group.kind === 'coding' ? `<span class="label-sm">입출력 예</span><pre><code>${esc(item.io)}</code></pre>` : ''}`;
+    ${group.kind === 'coding' ? codingHtml(item) : `<div class="q-body"><p>${item.q}</p></div>`}`;
 }
 
 function renderQuestion(id) {

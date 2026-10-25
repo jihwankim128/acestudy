@@ -1,28 +1,39 @@
 // 토스증권 서버 필기 대비 문제은행. 문항 id 는 제출 기록(Firestore toss_submissions.qid)의 키라서 바꾸지 않는다.
 // c: 코딩, k: 주관식(단답), d: 서술형(설계), s: 서술형(개념)
 
+// 코딩 문항은 프로그래머스 형식: 문제 설명(body), 제한사항(limits), 입출력 예(examples), 입출력 예 설명(explain), solution 템플릿(template)
 export const CODING = [
 {
   id: "c1", title: "지정가 주문 매칭 엔진", chips: ["우선순위 큐", "lazy deletion"], case: "주문 체결",
   body: `
-<p>한 종목의 주문 명령이 시간 순서대로 주어집니다. 각 명령을 처리하며 체결 내역을 순서대로 반환하세요.</p>
+<p>한 종목의 주문 명령이 시간 순서대로 담긴 문자열 배열 <code>commands</code>가 주어집니다. 명령을 순서대로 처리하며 발생한 체결 내역을 순서대로 return 하도록 solution 함수를 완성해 주세요.</p>
 <ul>
-  <li><code>"B id price qty"</code>: 매수 지정가 주문, <code>"S id price qty"</code>: 매도 지정가 주문</li>
-  <li><code>"C id"</code>: 아직 남은 수량이 있는 주문 <code>id</code>를 취소합니다. 이미 전부 체결된 주문이면 무시합니다.</li>
+  <li><code>"B id price qty"</code>는 매수 지정가 주문, <code>"S id price qty"</code>는 매도 지정가 주문입니다.</li>
+  <li><code>"C id"</code>는 아직 남은 수량이 있는 주문 <code>id</code>를 취소합니다. 이미 전부 체결된 주문이면 무시합니다.</li>
   <li>새 매수 주문은 <b>가격이 자신의 가격 이하인 매도 주문</b>과, 새 매도 주문은 <b>가격이 자신의 가격 이상인 매수 주문</b>과 체결됩니다.</li>
-  <li>체결 상대는 가격 우선(매도는 낮은 가격, 매수는 높은 가격), 같은 가격이면 먼저 들어온 주문 우선입니다.</li>
+  <li>체결 상대는 가격 우선(매도는 낮은 가격, 매수는 높은 가격)이고, 같은 가격이면 먼저 들어온 주문이 우선입니다.</li>
   <li>체결 가격은 <b>먼저 호가창에 있던 주문의 가격</b>입니다. 부분 체결될 수 있고, 남은 수량은 호가창에 올라갑니다.</li>
-  <li>체결 내역 형식: <code>"매수id 매도id 가격 수량"</code></li>
-</ul>
-<p class="muted">제한: 명령 수 ≤ 200,000, 가격 ≤ 10<sup>9</sup>, 수량 ≤ 10<sup>6</sup>, 주문 id는 모두 다릅니다.</p>`,
-  io: `입력
-["S 1 70100 5", "S 2 70000 3", "S 3 70000 4", "B 4 70100 10", "C 1", "B 5 70100 1"]
+  <li>체결 내역 한 건은 <code>"매수id 매도id 가격 수량"</code> 형식의 문자열입니다. 체결이 없으면 빈 배열을 return 합니다.</li>
+</ul>`,
+  limits: `
+<li><code>commands</code>의 길이는 1 이상 200,000 이하입니다.</li>
+<li>가격은 1 이상 1,000,000,000 이하, 수량은 1 이상 1,000,000 이하인 정수입니다.</li>
+<li>주문 <code>id</code>는 모두 다른 양의 정수이고, <code>"C id"</code>는 앞에서 들어온 주문만 가리킵니다.</li>`,
+  examples: [
+    { args: [["commands", `["S 1 70100 5", "S 2 70000 3", "S 3 70000 4", "B 4 70100 10", "C 1", "B 5 70100 1"]`]], result: `["4 2 70000 3", "4 3 70000 4", "4 1 70100 3"]` },
+    { args: [["commands", `["B 1 50000 2", "S 2 50100 1"]`]], result: `[]` },
+  ],
+  explain: `
+<p><b>입출력 예 #1</b>: 매수 4(10주)는 70,000원 매도 2와 3을 시간 순으로 체결한 뒤, 70,100원 매도 1에서 3주를 체결합니다. 매도 1의 남은 2주는 취소되므로 매수 5는 체결 없이 호가창에 올라갑니다.</p>
+<p><b>입출력 예 #2</b>: 매수 50,000원과 매도 50,100원은 가격이 맞지 않아 체결되지 않습니다.</p>`,
+  template: `import java.util.*;
 
-출력
-["4 2 70000 3", "4 3 70000 4", "4 1 70100 3"]
-
-설명: 매수 4(10주)는 70000원 매도 2, 3을 시간 순으로 먹고 70100원 매도 1에서 3주를 체결합니다.
-매도 1의 남은 2주는 취소되므로 매수 5는 체결 없이 호가창에 올라갑니다.`,
+class Solution {
+    public String[] solution(String[] commands) {
+        String[] answer = {};
+        return answer;
+    }
+}`,
   approach: `
 <ul>
   <li>매도 호가창은 (가격 오름차순, 순번 오름차순), 매수 호가창은 (가격 내림차순, 순번 오름차순) 우선순위 큐로 둡니다. 체결마다 맨 위만 보면 되므로 주문당 O(log N).</li>
@@ -40,7 +51,7 @@ class Solution {
         }
     }
 
-    public List<String> solution(String[] commands) {
+    public String[] solution(String[] commands) {
         PriorityQueue<Order> buys = new PriorityQueue<>((a, b) ->
             a.price != b.price ? Long.compare(b.price, a.price) : Long.compare(a.seq, b.seq));
         PriorityQueue<Order> sells = new PriorityQueue<>((a, b) ->
@@ -73,28 +84,40 @@ class Solution {
             }
             if (in.qty > 0) (isBuy ? buys : sells).add(in);
         }
-        return trades;
+        return trades.toArray(new String[0]);
     }
 }`
 },
 {
   id: "c2", title: "멱등 원장 반영", chips: ["해시맵", "해시셋"], case: "잔고 정합성",
   body: `
-<p>계좌 이벤트가 메시지 큐에서 들어옵니다. 메시지 큐는 같은 이벤트를 <b>두 번 이상 보낼 수 있습니다</b>. 이벤트를 순서대로 반영한 최종 잔고와 거절된 이벤트를 구하세요.</p>
+<p>계좌 이벤트가 메시지 큐에서 들어옵니다. 메시지 큐는 같은 이벤트를 <b>두 번 이상 보낼 수 있습니다</b>. 이벤트가 담긴 문자열 배열 <code>events</code>를 순서대로 반영했을 때의 최종 잔고와 거절된 이벤트를 return 하도록 solution 함수를 완성해 주세요.</p>
 <ul>
   <li><code>"eventId account DEPOSIT amount"</code>: 입금</li>
   <li><code>"eventId account WITHDRAW amount"</code>: 출금. 잔고가 부족하면 거절합니다.</li>
   <li><code>"eventId from TRANSFER to amount"</code>: 이체. 출금 계좌 잔고가 부족하면 <b>양쪽 모두 반영하지 않고</b> 거절합니다.</li>
   <li>이미 처리한 <code>eventId</code>가 다시 오면 아무 일도 하지 않습니다. 처음에 거절된 이벤트가 다시 와도 마찬가지입니다.</li>
-  <li>반환: 이벤트에 등장한 모든 계좌를 계좌명 사전순으로 <code>"계좌:잔고"</code>, 마지막 원소는 <code>"REJECTED:"</code> 뒤에 거절된 eventId를 처리 순서대로 쉼표로 이어 붙입니다.</li>
-</ul>
-<p class="muted">제한: 이벤트 수 ≤ 300,000, 금액은 원 단위 정수, 잔고 합은 long 범위.</p>`,
-  io: `입력
-["e1 A DEPOSIT 10000", "e2 A WITHDRAW 3000", "e2 A WITHDRAW 3000",
- "e3 A TRANSFER B 8000", "e4 B DEPOSIT 500", "e5 A TRANSFER B 7000"]
+  <li>return 배열은 이벤트에 등장한 모든 계좌를 계좌명 사전순으로 <code>"계좌:잔고"</code>로 담고, 마지막 원소는 <code>"REJECTED:"</code> 뒤에 거절된 eventId를 처리 순서대로 쉼표로 이어 붙인 문자열입니다.</li>
+</ul>`,
+  limits: `
+<li><code>events</code>의 길이는 1 이상 300,000 이하입니다.</li>
+<li>금액은 1 이상 1,000,000,000 이하인 원 단위 정수이고, 모든 잔고의 합은 long 범위를 넘지 않습니다.</li>
+<li>모든 계좌의 처음 잔고는 0입니다.</li>`,
+  examples: [
+    { args: [["events", `["e1 A DEPOSIT 10000", "e2 A WITHDRAW 3000", "e2 A WITHDRAW 3000", "e3 A TRANSFER B 8000", "e4 B DEPOSIT 500", "e5 A TRANSFER B 7000"]`]], result: `["A:0", "B:7500", "REJECTED:e3"]` },
+    { args: [["events", `["t1 X DEPOSIT 100", "t2 X WITHDRAW 300", "t2 X WITHDRAW 300"]`]], result: `["X:100", "REJECTED:t2"]` },
+  ],
+  explain: `
+<p><b>입출력 예 #1</b>: e2는 두 번 왔지만 한 번만 반영됩니다. e3 이체 시점에 A의 잔고는 7,000원이라 8,000원 이체는 거절됩니다. e5 이후 A는 0원, B는 7,500원입니다.</p>
+<p><b>입출력 예 #2</b>: t2는 잔고 부족으로 거절되고, 다시 와도 결과가 바뀌지 않으므로 REJECTED에 한 번만 들어갑니다.</p>`,
+  template: `import java.util.*;
 
-출력
-["A:0", "B:7500", "REJECTED:e3"]`,
+class Solution {
+    public String[] solution(String[] events) {
+        String[] answer = {};
+        return answer;
+    }
+}`,
   approach: `
 <ul>
   <li>처리한 eventId를 HashSet에 기록하고, <code>add</code>가 false면 건너뜁니다. 거절된 이벤트도 "처리됨"으로 기록해야 재전송 시 결과가 바뀌지 않습니다. 이것이 멱등성의 정의입니다.</li>
@@ -146,22 +169,33 @@ class Solution {
 {
   id: "c3", title: "1분봉 캔들 만들기", chips: ["안정 정렬", "구간 집계"], case: "실시간 시세",
   body: `
-<p>한 종목의 체결 틱이 네트워크 사정으로 <b>시간 순서가 섞여서</b> 들어옵니다. 1분봉(OHLCV)을 만들어 반환하세요.</p>
+<p>한 종목의 체결 틱이 네트워크 사정으로 <b>시간 순서가 섞여서</b> 들어옵니다. 틱이 담긴 문자열 배열 <code>ticks</code>가 주어질 때, 1분봉(OHLCV)을 시간 순으로 return 하도록 solution 함수를 완성해 주세요.</p>
 <ul>
-  <li>틱 형식: <code>"HH:MM:SS price volume"</code> (같은 날, 1개 이상)</li>
+  <li>틱은 <code>"HH:MM:SS price volume"</code> 형식입니다.</li>
   <li>분봉은 첫 틱이 속한 분부터 마지막 틱이 속한 분까지 <b>빠짐없이</b> 만듭니다.</li>
   <li>시가(O)는 그 분의 가장 이른 틱, 종가(C)는 가장 늦은 틱입니다. 같은 초의 틱은 입력 순서를 따릅니다.</li>
   <li>틱이 없는 분은 O=H=L=C=직전 분의 종가, 거래량 0입니다.</li>
-  <li>출력 형식: <code>"HH:MM O H L C V"</code></li>
-</ul>
-<p class="muted">제한: 틱 수 ≤ 500,000.</p>`,
-  io: `입력
-["09:00:05 70000 10", "09:00:01 70100 5", "09:00:59 69900 2", "09:02:10 70200 1"]
+  <li>분봉 한 개는 <code>"HH:MM O H L C V"</code> 형식의 문자열입니다.</li>
+</ul>`,
+  limits: `
+<li><code>ticks</code>의 길이는 1 이상 500,000 이하입니다.</li>
+<li>모든 틱은 같은 날 00:00:00부터 23:59:59 사이입니다.</li>
+<li>price는 1 이상 10,000,000 이하, volume은 1 이상 1,000,000 이하인 정수입니다.</li>`,
+  examples: [
+    { args: [["ticks", `["09:00:05 70000 10", "09:00:01 70100 5", "09:00:59 69900 2", "09:02:10 70200 1"]`]], result: `["09:00 70100 70100 69900 69900 17", "09:01 69900 69900 69900 69900 0", "09:02 70200 70200 70200 70200 1"]` },
+    { args: [["ticks", `["10:15:00 1000 3"]`]], result: `["10:15 1000 1000 1000 1000 3"]` },
+  ],
+  explain: `
+<p><b>입출력 예 #1</b>: 09:00분의 가장 이른 틱은 09:00:01의 70,100원, 가장 늦은 틱은 09:00:59의 69,900원입니다. 09:01분은 틱이 없어 직전 종가 69,900원으로 채우고 거래량은 0입니다.</p>
+<p><b>입출력 예 #2</b>: 틱이 하나면 분봉도 하나입니다.</p>`,
+  template: `import java.util.*;
 
-출력
-["09:00 70100 70100 69900 69900 17",
- "09:01 69900 69900 69900 69900 0",
- "09:02 70200 70200 70200 70200 1"]`,
+class Solution {
+    public String[] solution(String[] ticks) {
+        String[] answer = {};
+        return answer;
+    }
+}`,
   approach: `
 <ul>
   <li>초 단위로 바꿔 정렬합니다. 같은 초는 입력 순서를 유지해야 하므로 <b>안정 정렬</b>이 필요합니다. Java의 객체 배열 정렬(TimSort)은 안정적이고, 기본형 배열 정렬(Dual-Pivot Quicksort)은 아닙니다.</li>
@@ -213,33 +247,45 @@ class Solution {
 {
   id: "c4", title: "브로커 유량 제어", chips: ["덱", "슬라이딩 윈도우"], case: "외부 브로커 TPS",
   body: `
-<p>외부 브로커로 나가는 주문 요청을 제한합니다. 요청은 시간순으로 <code>"timestampMs userId"</code> 형식으로 주어집니다.</p>
+<p>외부 브로커로 나가는 주문 요청을 제한합니다. 시간순으로 정렬된 요청 배열 <code>requests</code>와 사용자별 한도 <code>userLimit</code>, 전체 한도 <code>globalLimit</code>, 윈도우 길이 <code>windowMs</code>가 주어질 때, 각 요청의 허용 여부를 순서대로 return 하도록 solution 함수를 완성해 주세요.</p>
 <ul>
+  <li>요청은 <code>"timestampMs userId"</code> 형식입니다.</li>
   <li>각 요청 시각 <code>t</code>에 대해, 구간 <code>(t − windowMs, t]</code> 안에서 <b>허용된</b> 요청 수를 셉니다.</li>
   <li>해당 사용자의 허용 수가 <code>userLimit</code> 미만이고, 전체 허용 수가 <code>globalLimit</code> 미만이면 <code>"ALLOW"</code>, 아니면 <code>"DENY"</code>입니다.</li>
   <li>거절된 요청은 사용자 한도와 전체 한도 어느 쪽에도 세지 않습니다.</li>
-</ul>
-<p class="muted">제한: 요청 수 ≤ 500,000, 사용자 수 ≤ 100,000.</p>`,
-  io: `입력
-requests = ["0 a", "100 a", "200 a", "300 b", "400 c", "1000 a", "1100 a"]
-userLimit = 2, globalLimit = 3, windowMs = 1000
+</ul>`,
+  limits: `
+<li><code>requests</code>의 길이는 1 이상 500,000 이하이고, timestampMs는 0 이상 10<sup>12</sup> 이하이며 감소하지 않습니다.</li>
+<li>서로 다른 userId는 100,000개 이하입니다.</li>
+<li><code>userLimit</code>, <code>globalLimit</code>는 1 이상 100,000 이하, <code>windowMs</code>는 1 이상 60,000 이하인 정수입니다.</li>`,
+  examples: [
+    { args: [["requests", `["0 a", "100 a", "200 a", "300 b", "400 c", "1000 a", "1100 a"]`], ["userLimit", "2"], ["globalLimit", "3"], ["windowMs", "1000"]], result: `["ALLOW", "ALLOW", "DENY", "ALLOW", "DENY", "ALLOW", "ALLOW"]` },
+  ],
+  explain: `
+<p><b>입출력 예 #1</b>: 200ms의 a는 a의 한도(2)를 넘어 거절되고, 400ms의 c는 전체 한도(3)를 넘어 거절됩니다. 1000ms에는 0ms 요청이 구간 (0, 1000]에서 빠지므로 a가 다시 허용되고, 1100ms에는 100ms 요청이 빠져 또 허용됩니다.</p>`,
+  template: `import java.util.*;
 
-출력
-["ALLOW", "ALLOW", "DENY", "ALLOW", "DENY", "ALLOW", "ALLOW"]`,
+class Solution {
+    public String[] solution(String[] requests, int userLimit, int globalLimit, int windowMs) {
+        String[] answer = {};
+        return answer;
+    }
+}`,
   approach: `
 <ul>
   <li>사용자별 덱과 전역 덱에 <b>허용된</b> 요청 시각만 넣습니다. 새 요청마다 앞에서 <code>t − windowMs</code> 이하인 시각을 빼면, 덱 크기가 곧 구간 내 허용 수입니다.</li>
   <li>각 시각은 한 번 들어가고 한 번 나오므로 전체 O(N).</li>
+  <li>timestampMs가 int 범위를 넘으므로 <code>long</code>으로 파싱합니다.</li>
   <li>구간 경계(열린 구간인지 닫힌 구간인지)를 문제대로 처리했는지가 채점 포인트입니다. 예시의 1000ms 요청에서 0ms 요청이 빠져야 합니다.</li>
   <li>꼬리 질문 대비: 고정 윈도우는 경계에서 2배 버스트가 생기고, 토큰 버킷은 메모리 O(1)로 평균 속도와 버스트 크기를 따로 조절합니다. 여러 서버에서 공유하려면 Redis에 원자적 스크립트로 둡니다.</li>
 </ul>`,
   code: `import java.util.*;
 
 class Solution {
-    public String[] solution(String[] requests, int userLimit, int globalLimit, long windowMs) {
+    public String[] solution(String[] requests, int userLimit, int globalLimit, int windowMs) {
         Map<String, ArrayDeque<Long>> perUser = new HashMap<>();
         ArrayDeque<Long> global = new ArrayDeque<>();
-        String[] out = new String[requests.length];
+        String[] answer = new String[requests.length];
 
         for (int i = 0; i < requests.length; i++) {
             String[] p = requests[i].split(" ");
@@ -252,30 +298,43 @@ class Solution {
             if (q.size() < userLimit && global.size() < globalLimit) {
                 q.addLast(t);
                 global.addLast(t);
-                out[i] = "ALLOW";
+                answer[i] = "ALLOW";
             } else {
-                out[i] = "DENY";
+                answer[i] = "DENY";
             }
         }
-        return out;
+        return answer;
     }
 }`
 },
 {
   id: "c5", title: "서비스 기동 순서", chips: ["위상 정렬", "사이클 탐지"], case: "MSA 의존성",
   body: `
-<p>MSA 서비스 간 의존 관계가 <code>"A B"</code>(A가 B를 호출하므로 B가 먼저 떠 있어야 함) 형태로 주어집니다. 모든 서비스를 띄우는 순서를 반환하세요.</p>
+<p>MSA 서비스 간 의존 관계가 담긴 문자열 배열 <code>deps</code>가 주어집니다. <code>"A B"</code>는 A가 B를 호출하므로 B가 먼저 떠 있어야 한다는 뜻입니다. 모든 서비스를 띄우는 순서를 return 하도록 solution 함수를 완성해 주세요.</p>
 <ul>
   <li>동시에 띄울 수 있는 서비스가 여럿이면 <b>이름 사전순으로 가장 앞선 것</b>을 먼저 띄웁니다.</li>
-  <li>순환 의존이 있어 모두 띄울 수 없으면 빈 배열을 반환합니다.</li>
+  <li>순환 의존이 있어 모두 띄울 수 없으면 빈 배열을 return 합니다.</li>
   <li>같은 의존 관계가 중복으로 주어질 수 있습니다.</li>
 </ul>
-<p class="muted">제한: 의존 관계 수 ≤ 200,000. 2022년 공개 기출 「Lockfile을 만들어보자」처럼 그래프 탐색 + 결정적 순서를 묻는 유형입니다.</p>`,
-  io: `입력
-["order account", "order market", "balance account", "order balance", "gateway order"]
+<p class="muted">2022년 공개 기출 「Lockfile을 만들어보자」처럼 그래프 탐색과 결정적 순서를 묻는 유형입니다.</p>`,
+  limits: `
+<li><code>deps</code>의 길이는 1 이상 200,000 이하입니다.</li>
+<li>서비스 이름은 알파벳 소문자로만 이루어진 길이 1 이상 20 이하의 문자열이고, A와 B는 서로 다릅니다.</li>`,
+  examples: [
+    { args: [["deps", `["order account", "order market", "balance account", "order balance", "gateway order"]`]], result: `["account", "balance", "market", "order", "gateway"]` },
+    { args: [["deps", `["a b", "b a"]`]], result: `[]` },
+  ],
+  explain: `
+<p><b>입출력 예 #1</b>: 처음에 띄울 수 있는 서비스는 account와 market이고, 사전순으로 account가 먼저입니다. account가 뜨면 balance도 띄울 수 있게 되어 balance가 market보다 앞섭니다.</p>
+<p><b>입출력 예 #2</b>: a와 b가 서로를 기다리므로 띄울 수 없습니다.</p>`,
+  template: `import java.util.*;
 
-출력
-["account", "balance", "market", "order", "gateway"]`,
+class Solution {
+    public String[] solution(String[] deps) {
+        String[] answer = {};
+        return answer;
+    }
+}`,
   approach: `
 <ul>
   <li>간선 방향을 B → A(먼저 떠야 하는 쪽 → 의존하는 쪽)로 잡고 진입 차수를 셉니다.</li>
