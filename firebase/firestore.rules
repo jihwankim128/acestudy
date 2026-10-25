@@ -6,5 +6,20 @@ service cloud.firestore {
       allow read: if true;
       allow write: if false;
     }
+
+    // /toss 페이지 답안 제출 — 누구나 추가만 가능, 수정·삭제 불가
+    match /toss_submissions/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['qid', 'name', 'content', 'createdAt'])
+        && request.resource.data.keys().hasAll(['qid', 'name', 'content', 'createdAt'])
+        && request.resource.data.qid is string
+        && request.resource.data.qid.matches('^[a-z][0-9]{1,3}$')
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1
+        && request.resource.data.name.size() <= 30
+        && request.resource.data.content is string
+        && request.resource.data.content.size() >= 1
+        && request.resource.data.content.size() <= 20000
+        && request.resource.data.createdAt == request.time;
+    }
   }
 }
