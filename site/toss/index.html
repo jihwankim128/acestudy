@@ -2,53 +2,41 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Toss 스터디 | AceStudy</title>
   <meta name="description" content="토스증권 서버 필기(코딩 1, 주관식 5, 서술형 2) 대비 문제은행과 팀 답안 기록" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
   <link rel="stylesheet" href="/toss/toss.css" />
 </head>
-<body>
-  <header class="mast">
-    <div class="wrap">
-      <nav class="tracks" aria-label="스터디 트랙">
-        <a href="/">CS 스터디</a>
-        <a href="/toss" aria-current="page">Toss 스터디</a>
-      </nav>
-      <div class="mast-grid">
-        <div>
-          <h1>토스증권 서버 필기</h1>
-          <p class="sub">공개 기출과 토스증권 기술 글로 만든 문제를 풀고, 팀원의 답안과 나란히 비교합니다.</p>
-        </div>
-        <dl class="format" aria-label="시험 구성">
-          <div><dt>코딩</dt><dd>1</dd></div>
-          <div><dt>주관식</dt><dd>5</dd></div>
-          <div><dt>서술형</dt><dd>2</dd></div>
-        </dl>
-      </div>
+<body data-view="overview">
+  <aside class="sidebar">
+    <div class="vault">
+      <span class="logo">◆</span> AceStudy
+      <span id="progress" class="progress" title="내 이름으로 제출한 문항 수"></span>
     </div>
-  </header>
+    <nav class="tracks" aria-label="스터디 트랙">
+      <a href="/">CS 스터디</a>
+      <a href="/toss" aria-current="page">Toss 스터디</a>
+    </nav>
+    <nav class="views">
+      <a href="#/overview" data-view="overview">개요</a>
+      <a href="#/mock" data-view="mock">모의고사</a>
+      <a href="#/records" data-view="records">기록</a>
+    </nav>
+    <div id="tree" class="tree"></div>
+  </aside>
 
-  <div class="bar">
-    <div class="wrap bar-inner">
-      <div class="tabs" role="tablist" aria-label="섹션">
-        <button role="tab" type="button" data-tab="trend" aria-selected="true">출제 경향</button>
-        <button role="tab" type="button" data-tab="coding" aria-selected="false">코딩<span class="n" id="n-coding"></span></button>
-        <button role="tab" type="button" data-tab="quiz" aria-selected="false">주관식<span class="n" id="n-quiz"></span></button>
-        <button role="tab" type="button" data-tab="essay" aria-selected="false">서술형<span class="n" id="n-essay"></span></button>
-        <button role="tab" type="button" data-tab="mock" aria-selected="false">모의고사</button>
+  <main class="workspace">
+    <section id="overview-view" class="view doc">
+      <div class="crumb">toss / 토스증권 서버 필기</div>
+      <h1>토스증권 서버 필기</h1>
+      <div class="props">
+        <span>코딩 <b>1</b></span><span>주관식 <b>5</b></span><span>서술형 <b>2</b></span>
+        <span>문제은행 <b id="bank-total"></b>문항</span>
       </div>
-      <div class="who">
-        <label for="who">이름</label>
-        <input id="who" maxlength="30" autocomplete="nickname" placeholder="제출할 때 표시돼요" />
-      </div>
-    </div>
-  </div>
-
-  <main class="wrap">
-    <section class="panel" id="panel-trend">
+      <blockquote>공개 기출과 토스증권 기술 글로 만든 문제를 풀고, 팀원의 답안과 나란히 비교합니다. 왼쪽 목록에서 문항을 고르세요.</blockquote>
       <h2>무엇이 나올까</h2>
       <p class="note">토스증권의 이번 시험 문항은 공개되지 않았습니다. 아래 <span class="tag-fact">확인</span>은 출처가 있는 사실, <span class="tag-guess">추정</span>은 그 사실에서 끌어낸 제 예측입니다.</p>
 
@@ -67,7 +55,7 @@
           <ul>
             <li><span class="tag-fact">확인</span> 과거 서버 직군 서술형은 30분에 5~6문항, 문항당 약 5분. 검색 없이 아는 지식으로 답하게 설계됐고, 대용량 트래픽 시스템이나 신뢰도 있는 상품을 만드는 실무 상황을 물었다는 후기가 있습니다.</li>
             <li><span class="tag-fact">확인</span> 토스증권 공식 글이 직접 강조하는 주제: 정합성과 트랜잭션, CQRS 읽기 뷰와 검증, 모니터링, 장애 트러블슈팅 순서, 통합 레이어.</li>
-            <li><span class="tag-guess">추정</span> 시험 구성에 주관식 5와 서술형 2가 따로 적혀 있으므로, 주관식은 <b>답이 하나로 정해진 단답형</b>(용어, 빈칸, 계산, 출력 예측)일 가능성이 높습니다. 토스가 형식을 공개한 적은 없어서, 2~3문장 짧은 서술로 나올 경우에 대비해 서술형 탭에 개념 서술 문항을 함께 두었습니다.</li>
+            <li><span class="tag-guess">추정</span> 시험 구성에 주관식 5와 서술형 2가 따로 적혀 있으므로, 주관식은 <b>답이 하나로 정해진 단답형</b>(용어, 빈칸, 계산, 출력 예측)일 가능성이 높습니다. 토스가 형식을 공개한 적은 없어서, 2~3문장 짧은 서술로 나올 경우에 대비해 서술형 · 개념 문항을 따로 두었습니다.</li>
             <li><span class="tag-guess">추정</span> 서술형은 CS 개념(격리수준, 인덱스, TCP, 스레드, GC)을 <b>서버 장애 장면으로 비틀거나</b>, 토스증권이 실제로 겪은 문제(브로커 지연, 시세 fan-out, 원장 정합성)를 설계 문제로 낼 것으로 봅니다.</li>
           </ul>
         </div>
@@ -130,61 +118,26 @@
         <li><a href="https://hvho.github.io/2021-08-16/toss-coding-interview" target="_blank" rel="noopener">2021 토스 코딩테스트 후기 (Server)</a> · <a href="https://seongmok.com/75" target="_blank" rel="noopener">2022 토스 NEXT 서버 코딩테스트 후기</a></li>
       </ul>
     </section>
-
-    <section class="panel" id="panel-coding" hidden>
-      <header class="panel-head">
-        <h2>코딩</h2>
-        <p>시험에는 1문제가 나옵니다. 다섯 문제는 각각 다른 자료구조를 쓰도록 골랐고, 모범 풀이는 Java입니다.</p>
-      </header>
-      <div class="qlist" id="list-coding"></div>
-    </section>
-
-    <section class="panel" id="panel-quiz" hidden>
-      <header class="panel-head">
-        <h2>주관식</h2>
-        <p>답이 하나로 정해지는 단답형입니다. 용어, 빈칸, 계산, 출력 예측으로 나눴습니다. 답을 적고 제출한 뒤 모범답안과 팀원 답을 비교하세요.</p>
-      </header>
-      <div class="qlist" id="list-quiz"></div>
-    </section>
-
-    <section class="panel" id="panel-essay" hidden>
-      <header class="panel-head">
-        <h2>서술형 · 설계</h2>
-        <p>문항당 15분 안팎입니다. 모범답안은 채점 포인트 목록이니 내 답이 몇 개를 짚었는지 세어 보세요.</p>
-      </header>
-      <div class="qlist" id="list-design"></div>
-      <header class="panel-head group-gap">
-        <h2>서술형 · 개념</h2>
-        <p>문항당 5분 안팎의 짧은 서술입니다. 주관식이 2~3문장 서술로 나와도 이 문항들로 대비할 수 있습니다.</p>
-      </header>
-      <div class="qlist" id="list-concept"></div>
-    </section>
-
-    <section class="panel" id="panel-mock" hidden>
-      <header class="panel-head">
-        <h2>모의고사</h2>
-        <p>코딩 1, 주관식 5, 서술형 2(설계 1, 개념 1)를 무작위로 뽑습니다. 실제 제한 시간을 모르면 90분으로 연습하세요.</p>
-      </header>
-      <div class="toolbar">
-        <button class="btn" id="btn-draw" type="button">새 시험지</button>
-        <label for="sel-min">제한 시간</label>
-        <select id="sel-min">
-          <option value="60">60분</option>
-          <option value="90" selected>90분</option>
-          <option value="120">120분</option>
-          <option value="150">150분</option>
-        </select>
-        <button class="btn ghost" id="btn-timer" type="button">시작</button>
-        <button class="btn ghost" id="btn-reset" type="button">초기화</button>
-        <span class="timer" id="timer" aria-live="polite">90:00</span>
+    <section id="question-view" class="view doc"></section>
+    <section id="mock-view" class="view doc">
+      <div class="crumb">toss / 모의고사</div>
+      <h1>모의고사</h1>
+      <div class="props">
+        <span>코딩 <b>1</b></span><span>주관식 <b>5</b></span><span>서술형 <b>2</b> (설계 1, 개념 1)</span>
       </div>
+      <blockquote>문제은행에서 무작위로 뽑습니다. 실제 제한 시간을 모르면 90분으로 연습하세요. 타이머는 오른쪽에 있습니다.</blockquote>
       <div id="mock-paper"></div>
     </section>
+    <section id="records-view" class="view doc"></section>
   </main>
 
-  <footer>
-    <div class="wrap">제출한 답안은 이 페이지를 여는 모든 사람이 볼 수 있고, 제출 후에는 수정하거나 지울 수 없습니다.</div>
-  </footer>
+  <aside id="links" class="links">
+    <h4>내 이름</h4>
+    <div class="who">
+      <input id="who" maxlength="30" autocomplete="nickname" placeholder="제출할 때 표시돼요" aria-label="내 이름" />
+    </div>
+    <div id="side"></div>
+  </aside>
 
   <script type="module" src="/toss/toss.js"></script>
 </body>

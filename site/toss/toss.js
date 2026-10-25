@@ -1,23 +1,53 @@
-// Toss 스터디: 문제은행 렌더링 + 문항별 답안 제출과 제출 이력 (Firestore toss_submissions)
+// Toss 스터디: CS 스터디와 같은 3단 구조(사이드바 문항 트리, 본문, 오른쪽 제출 이력)
+// 제출 기록은 Firestore toss_submissions 에 { qid, name, content, createdAt } 으로 쌓인다.
 import { CODING, QUIZ, DESIGN, CONCEPT } from '/toss/questions.js';
 
 const FIREBASE = 'https://www.gstatic.com/firebasejs/10.12.2';
 const COLLECTION = 'toss_submissions';
-const $ = (sel) => document.querySelector(sel);
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const pad = (n) => String(n).padStart(2, '0');
+const plain = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+const meter = (pct, color) => `<span class="meter"><i style="width:${pct}%;background:${color}"></i></span>`;
 
-// ---------- 로컬 보관: 이름, 작성 중인 답안, 마지막 탭 ----------
+const GROUPS = [
+  { id: 'coding', name: '코딩', label: '코딩', color: '--c-arch', kind: 'coding', items: CODING },
+  { id: 'quiz', name: '주관식 · 단답', label: '단답', color: '--c-os', kind: 'quiz', items: QUIZ },
+  { id: 'design', name: '서술형 · 설계', label: '설계', color: '--c-db', kind: 'text', items: DESIGN },
+  { id: 'concept', name: '서술형 · 개념', label: '개념', color: '--c-net', kind: 'text', items: CONCEPT },
+];
+const ORDER = GROUPS.flatMap((g) => g.items.map((item, i) => ({ item, group: g, no: i + 1 })));
+const byId = new Map(ORDER.map((e) => [e.item.id, e]));
+const titleOf = ({ item, group }) => (group.kind === 'coding' ? item.title : plain(item.q));
+
+// ---------- 로컬 보관: 이름, 작성 중인 답안 ----------
 const local = {
-  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
-  set(key, value) { try { localStorage.setItem(key, value); } catch {} },
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
 };
 const who = $('#who');
 who.value = local.get('toss-name') || '';
-who.addEventListener('input', () => local.set('toss-name', who.value.trim()));
+const me = () => who.value.trim();
+who.addEventListener('input', () => { local.set('toss-name', me()); renderTree(); });
 
-// ---------- 제출 기록: 페이지를 열 때 한 번 전부 읽고 문항별로 묶는다 ----------
-const subs = new Map();          // qid -> [{ name, content, at }]
-let subsState = 'loading';       // loading | ready | error
+// ---------- 제출 기록 ----------
+const subs = new Map(); // qid -> [{ name, content, at }] 최신순
+let all = [];           // 전체 최신순
+let subsState = 'loading';
 let fb = null;
+
+function pushSub(qid, entry) {
+  const e = { qid, ...entry };
+  if (!subs.has(qid)) subs.set(qid, []);
+  subs.get(qid).push(e);
+  all.push(e);
+  const newest = (a, b) => (b.at?.getTime() ?? 0) - (a.at?.getTime() ?? 0);
+  subs.get(qid).sort(newest);
+  all.sort(newest);
+}
+const countOf = (qid) => subs.get(qid)?.length ?? 0;
+const mineHas = (qid) => !!me() && (subs.get(qid) ?? []).some((s) => s.name === me());
 
 async function connect() {
   const [{ initializeApp }, fs, { firebaseConfig }] = await Promise.all([
@@ -30,65 +60,15 @@ async function connect() {
   const snap = await fs.getDocs(fs.query(fs.collection(db, COLLECTION), fs.limit(5000)));
   snap.forEach((doc) => {
     const d = doc.data();
-    pushSub(d.qid, { name: d.name, content: d.content, at: d.createdAt?.toDate?.() ?? null });
+    if (byId.has(d.qid)) pushSub(d.qid, { name: d.name, content: d.content, at: d.createdAt?.toDate?.() ?? null });
   });
-}
-
-function pushSub(qid, entry) {
-  if (!subs.has(qid)) subs.set(qid, []);
-  subs.get(qid).push(entry);
-  subs.get(qid).sort((a, b) => (b.at?.getTime() ?? 0) - (a.at?.getTime() ?? 0));
-}
-
-// 같은 문항이 문제은행과 모의고사에 동시에 그려질 수 있어서, qid 로 묶인 모든 사본을 갱신한다
-function refresh(qid) {
-  document.querySelectorAll(`[data-count="${qid}"]`).forEach((el) => {
-    el.textContent = subsState === 'ready' ? String(subs.get(qid)?.length ?? 0) : '';
-  });
-  document.querySelectorAll(`[data-hist="${qid}"]`).forEach((el) => { if (!el.hidden) drawHistory(el, qid); });
-}
-
-const fmt = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
-
-function drawHistory(box, qid) {
-  box.replaceChildren();
-  if (subsState === 'loading') {
-    box.innerHTML = '<div class="skel" aria-label="제출 이력을 불러오는 중"><i></i><i></i><i></i></div>';
-    return;
-  }
-  if (subsState === 'error') {
-    box.innerHTML = '<p class="empty">제출 이력을 불러오지 못했어요. 네트워크를 확인하고 새로고침하세요.</p>';
-    return;
-  }
-  const list = subs.get(qid) ?? [];
-  if (!list.length) {
-    box.innerHTML = '<p class="empty">아직 제출한 사람이 없어요. 첫 답안을 남겨 보세요.</p>';
-    return;
-  }
-  const mono = qid.startsWith('c');
-  for (const s of list) {
-    const row = document.createElement('article');
-    row.className = 'entry';
-    const head = document.createElement('header');
-    const name = document.createElement('b');
-    name.textContent = s.name;
-    const time = document.createElement('time');
-    if (s.at) { time.dateTime = s.at.toISOString(); time.textContent = fmt.format(s.at); }
-    else time.textContent = '방금';
-    head.append(name, time);
-    const body = document.createElement('div');
-    body.className = mono ? 'body mono' : 'body';
-    body.textContent = s.content;
-    row.append(head, body);
-    box.append(row);
-  }
 }
 
 async function submit(qid, ta, btn, status) {
-  const name = who.value.trim();
-  const content = ta.value.trim();
   const say = (kind, text) => { status.className = `status ${kind}`; status.textContent = text; };
-  if (!name) { say('error', '위쪽 이름 칸을 먼저 채워 주세요.'); who.focus(); return; }
+  const name = me();
+  const content = ta.value.trim();
+  if (!name) { say('error', '오른쪽 위 이름 칸을 먼저 채워 주세요.'); who.focus(); return; }
   if (!content) { say('error', '답안을 적은 뒤 제출하세요.'); ta.focus(); return; }
   if (!fb) { say('error', '저장소에 연결하지 못했어요. 새로고침 후 다시 시도하세요.'); return; }
   btn.disabled = true;
@@ -96,8 +76,9 @@ async function submit(qid, ta, btn, status) {
   try {
     await fb.addDoc(fb.collection(fb.db, COLLECTION), { qid, name, content, createdAt: fb.serverTimestamp() });
     pushSub(qid, { name, content, at: new Date() });
-    say('ok', '제출했어요. 이력에 추가됐습니다.');
-    refresh(qid);
+    say('ok', '제출했어요.');
+    renderTree();
+    refreshSide();
   } catch (e) {
     say('error', e?.code === 'permission-denied'
       ? '제출하지 못했어요. 이름은 30자, 답안은 2만 자까지입니다.'
@@ -107,111 +88,144 @@ async function submit(qid, ta, btn, status) {
   }
 }
 
-// ---------- 문항 그리기 ----------
-const el = (tag, cls, html) => {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (html != null) e.innerHTML = html;
-  return e;
-};
-const pre = (text) => { const p = el('pre'); const c = el('code'); c.textContent = text; p.append(c); return p; };
+const fmt = new Intl.DateTimeFormat('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+const when = (at) => (at ? `<time datetime="${at.toISOString()}">${esc(fmt.format(at))}</time>` : '<time>방금</time>');
 
-function chips(item, kind) {
-  const box = el('div', 'chips');
-  const names = kind === 'quiz' ? [item.type] : item.chips;
-  names.forEach((n) => box.append(el('span', 'chip', n)));
-  if (kind === 'coding') box.append(el('span', 'chip case', item.case));
-  else if (item.case) box.append(el('span', 'chip case', '토스증권 사례'));
-  return box;
+// ---------- 사이드바 문항 트리 ----------
+let current = null;
+function renderTree() {
+  const mine = ORDER.filter((e) => mineHas(e.item.id)).length;
+  $('#progress').textContent = me() ? `${mine}/${ORDER.length}` : `${ORDER.length}문항`;
+  $('#tree').innerHTML = GROUPS.map((g) => {
+    const done = g.items.filter((it) => mineHas(it.id)).length;
+    const pct = Math.round((done / g.items.length) * 100);
+    return `<details open><summary><span class="dot" style="--c:${css(g.color)}"></span>${esc(g.name)}
+        <span class="count">${me() ? `${done}/` : ''}${g.items.length}</span></summary>
+      <div class="cat-meter">${meter(pct, css(g.color))}</div>
+      ${g.items.map((it, i) => {
+        const e = byId.get(it.id);
+        const n = subsState === 'ready' ? countOf(it.id) : 0;
+        return `<a class="file ${mineHas(it.id) ? 'done mine' : ''} ${current === it.id ? 'active' : ''}" href="#/q/${it.id}" title="${esc(titleOf(e))}">
+          <span class="check">${mineHas(it.id) ? '✓' : '○'}</span><span class="num">${pad(i + 1)}</span>
+          <span class="label">${esc(titleOf(e))}</span>${n ? `<span class="owner">${n}</span>` : ''}</a>`;
+      }).join('')}
+    </details>`;
+  }).join('');
 }
 
-// kind: coding | quiz | text,  label: 번호 칸 위 글자,  no: 번호,  scope: 같은 문항 사본 구분용
-function card(item, kind, label, no, scope) {
-  const q = el('article', 'q');
-  const num = el('div', 'q-no');
-  num.append(el('span', 'k', label), el('span', 'n', String(no).padStart(2, '0')));
-  const main = el('div', 'q-main');
-  q.append(num, main);
-
-  if (kind === 'coding') main.append(el('h3', null, item.title));
-  main.append(chips(item, kind));
-  main.append(el('div', 'q-text', kind === 'coding' ? item.body : `<p>${item.q}</p>`));
-  if (kind === 'coding') {
-    const io = el('div', 'field');
-    io.append(el('span', 'io-label', '입출력 예'), pre(item.io));
-    main.append(io);
-  }
-
-  const field = el('div', 'field');
-  const ta = el('textarea', kind === 'coding' ? 'mono' : kind === 'quiz' ? 'short' : '');
-  ta.id = `${scope}-${item.id}`;
-  ta.dataset.draft = item.id;
-  ta.maxLength = 20000;
-  ta.spellcheck = kind !== 'coding';
+// ---------- 문항 본문 ----------
+function answerBox(e, scope) {
+  const { item, group } = e;
+  const wrap = document.createElement('div');
+  const id = `${scope}-${item.id}`;
+  wrap.innerHTML = `<label class="label-sm" for="${id}">${group.kind === 'coding' ? '내 풀이' : '내 답안'}</label>
+    <textarea id="${id}" class="${group.kind === 'coding' ? 'mono' : group.kind === 'quiz' ? 'short' : ''}" maxlength="20000"
+      data-draft="${item.id}" ${group.kind === 'coding' ? 'spellcheck="false"' : ''}></textarea>
+    <div class="actions"><button class="btn" type="button">제출</button><span class="status" aria-live="polite"></span></div>
+    <details class="quiz"><summary>${group.kind === 'coding' ? '접근법과 모범 풀이' : '모범답안'}</summary><div class="ans"></div></details>`;
+  const ta = wrap.querySelector('textarea');
   ta.value = local.get(`toss-draft:${item.id}`) || '';
   ta.addEventListener('input', () => {
     local.set(`toss-draft:${item.id}`, ta.value);
     document.querySelectorAll(`[data-draft="${item.id}"]`).forEach((t) => { if (t !== ta) t.value = ta.value; });
   });
-  const lab = el('label', null, kind === 'coding' ? '내 풀이' : '내 답안');
-  lab.htmlFor = ta.id;
-  field.append(lab, ta);
-  main.append(field);
-
-  const actions = el('div', 'actions');
-  const send = el('button', 'btn', '제출');
-  send.type = 'button';
-  const toggle = el('button', 'btn ghost', '제출 이력 ');
-  toggle.type = 'button';
-  toggle.setAttribute('aria-expanded', 'false');
-  const count = el('span');
-  count.dataset.count = item.id;
-  toggle.append(count);
-  const status = el('span', 'status');
-  status.setAttribute('aria-live', 'polite');
-  actions.append(send, toggle, status);
-  main.append(actions);
-
-  const hist = el('div', 'hist');
-  hist.hidden = true;
-  hist.dataset.hist = item.id;
-  hist.id = `${scope}-hist-${item.id}`;
-  toggle.setAttribute('aria-controls', hist.id);
-  main.append(hist);
-
-  send.addEventListener('click', () => submit(item.id, ta, send, status));
-  toggle.addEventListener('click', () => {
-    hist.hidden = !hist.hidden;
-    toggle.setAttribute('aria-expanded', String(!hist.hidden));
-    if (!hist.hidden) drawHistory(hist, item.id);
-  });
-
-  const model = el('details', 'model');
-  model.append(el('summary', null, kind === 'coding' ? '접근법과 모범 풀이' : '모범답안'));
-  const ans = el('div', 'ans');
-  model.append(ans);
+  const btn = wrap.querySelector('.btn');
+  btn.addEventListener('click', () => submit(item.id, ta, btn, wrap.querySelector('.status')));
   // 펼칠 때 채워서, 답을 쓰기 전에 실수로 내용이 보이는 일을 줄인다
+  const model = wrap.querySelector('details');
   model.addEventListener('toggle', () => {
+    const ans = model.querySelector('.ans');
     if (!model.open || ans.childElementCount) return;
-    ans.innerHTML = kind === 'coding' ? item.approach : item.a;
-    if (kind === 'coding') ans.append(pre(item.code));
-    if (kind === 'quiz' && item.ref) ans.append(el('p', 'src', `더 깊게 보려면 ${item.ref.startsWith('코딩') ? '코딩 탭' : '서술형 탭'}의 ${item.ref}`));
+    ans.innerHTML = group.kind === 'coding' ? item.approach : item.a;
+    if (group.kind === 'coding') ans.insertAdjacentHTML('beforeend', `<pre><code>${esc(item.code)}</code></pre>`);
+    if (group.kind === 'quiz' && item.ref) {
+      const ref = ORDER.find((x) => `${x.group.label} ${x.no}` === item.ref);
+      ans.insertAdjacentHTML('beforeend', `<p class="src">더 깊게: ${ref ? `<a class="wikilink" href="#/q/${ref.item.id}">${esc(item.ref)}</a>` : esc(item.ref)}</p>`);
+    }
   });
-  main.append(model);
-
-  refreshCount(count, item.id);
-  return q;
+  return wrap;
 }
-const refreshCount = (node, qid) => { node.textContent = subsState === 'ready' ? String(subs.get(qid)?.length ?? 0) : ''; };
 
-function renderBank() {
-  CODING.forEach((it, i) => $('#list-coding').append(card(it, 'coding', '코딩', i + 1, 'bank')));
-  QUIZ.forEach((it, i) => $('#list-quiz').append(card(it, 'quiz', '단답', i + 1, 'bank')));
-  DESIGN.forEach((it, i) => $('#list-design').append(card(it, 'text', '설계', i + 1, 'bank')));
-  CONCEPT.forEach((it, i) => $('#list-concept').append(card(it, 'text', '개념', i + 1, 'bank')));
-  $('#n-coding').textContent = CODING.length;
-  $('#n-quiz').textContent = QUIZ.length;
-  $('#n-essay').textContent = DESIGN.length + CONCEPT.length;
+function questionHead(e) {
+  const { item, group, no } = e;
+  const chips = group.kind === 'quiz' ? [item.type] : item.chips;
+  const isCase = group.kind === 'coding' || item.case;
+  return `<div class="props">${chips.map((c) => `<span class="tag">${esc(c)}</span>`).join('')}
+      ${isCase ? `<span class="tag case">${group.kind === 'coding' ? esc(item.case) : '토스증권 사례'}</span>` : ''}</div>
+    <div class="q-body">${group.kind === 'coding' ? item.body : `<p>${item.q}</p>`}</div>
+    ${group.kind === 'coding' ? `<span class="label-sm">입출력 예</span><pre><code>${esc(item.io)}</code></pre>` : ''}`;
+}
+
+function renderQuestion(id) {
+  const e = byId.get(id);
+  const view = $('#question-view');
+  if (!e) { view.innerHTML = '<h1>없는 문항</h1><p class="muted">왼쪽 목록에서 문항을 고르세요.</p>'; return; }
+  const { item, group, no } = e;
+  const i = ORDER.indexOf(e);
+  const prev = ORDER[i - 1];
+  const next = ORDER[i + 1];
+  view.innerHTML = `<div class="crumb">toss / ${esc(group.name)} / ${pad(no)}</div>
+    <h1>${group.kind === 'coding' ? esc(item.title) : `${esc(group.label)} ${pad(no)}`}</h1>
+    ${questionHead(e)}`;
+  view.append(answerBox(e, 'q'));
+  view.insertAdjacentHTML('beforeend', `<nav class="pager">
+      ${prev ? `<a href="#/q/${prev.item.id}">← ${esc(prev.group.label)} ${pad(prev.no)}</a>` : '<span></span>'}
+      ${next ? `<a href="#/q/${next.item.id}">${esc(next.group.label)} ${pad(next.no)} →</a>` : '<span></span>'}
+    </nav>`);
+  view.scrollTop = 0;
+}
+
+// ---------- 오른쪽 패널 ----------
+function historyHtml(qid) {
+  if (subsState === 'loading') return '<div class="skel" aria-label="불러오는 중"><i></i><i></i><i></i></div>';
+  if (subsState === 'error') return '<p class="empty">제출 이력을 불러오지 못했어요. 새로고침하세요.</p>';
+  const list = subs.get(qid) ?? [];
+  if (!list.length) return '<p class="empty">아직 제출한 사람이 없어요. 첫 답안을 남겨 보세요.</p>';
+  const mono = qid.startsWith('c');
+  return list.map((s) => `<article class="entry"><header><b>${esc(s.name)}</b>${when(s.at)}</header>
+    <div class="body ${mono ? 'mono' : ''}">${esc(s.content)}</div></article>`).join('');
+}
+
+function membersHtml() {
+  if (subsState !== 'ready') return historyHtml('');
+  const names = [...new Set(all.map((s) => s.name))];
+  if (!names.length) return '<p class="empty">아직 제출 기록이 없어요.</p>';
+  return names.map((n) => {
+    const qs = new Set(all.filter((s) => s.name === n).map((s) => s.qid)).size;
+    return `<div class="side-member"><span>${esc(n)}</span><span class="muted small">${qs}/${ORDER.length}</span>${meter((qs / ORDER.length) * 100, css('--accent'))}</div>`;
+  }).join('');
+}
+
+let route = 'overview';
+function refreshSide() {
+  const side = $('#side');
+  if (route === 'question') {
+    side.innerHTML = `<h4>제출 이력<span class="n">${subsState === 'ready' ? countOf(current) : ''}</span></h4>${historyHtml(current)}`;
+  } else if (route === 'mock') {
+    if (side.firstChild !== mockSide) side.replaceChildren(mockSide);
+    mockSide.querySelector('#mock-list').innerHTML = paper.map((e) =>
+      `<a class="file ${mineHas(e.item.id) ? 'done' : ''}" href="#/q/${e.item.id}"><span class="check">${mineHas(e.item.id) ? '✓' : '○'}</span>
+        <span class="label">${esc(e.group.label)} ${pad(e.no)}</span></a>`).join('');
+  } else {
+    side.innerHTML = `<h4>팀원별 제출 문항</h4>${membersHtml()}`;
+  }
+  if (route === 'records') renderRecords();
+}
+
+function renderRecords() {
+  const view = $('#records-view');
+  let body;
+  if (subsState === 'loading') body = '<div class="skel"><i></i><i></i><i></i></div>';
+  else if (subsState === 'error') body = '<p class="muted">제출 기록을 불러오지 못했어요. 새로고침하세요.</p>';
+  else if (!all.length) body = '<p class="muted">아직 제출 기록이 없어요. 문항을 골라 첫 답안을 남겨 보세요.</p>';
+  else body = all.slice(0, 100).map((s) => {
+    const e = byId.get(s.qid);
+    return `<article class="rec"><header><b>${esc(s.name)}</b>
+        <a href="#/q/${s.qid}">${esc(e.group.name)} ${pad(e.no)}</a>${when(s.at)}</header>
+      <div class="body ${e.group.kind === 'coding' ? 'mono' : ''}">${esc(s.content)}</div></article>`;
+  }).join('');
+  view.innerHTML = `<div class="crumb">toss / 기록</div><h1>최근 제출</h1>
+    <div class="props"><span>전체 <b>${all.length}</b>건</span><span>최근 100건까지 표시</span></div>${body}`;
 }
 
 // ---------- 모의고사 ----------
@@ -220,38 +234,51 @@ const pick = (arr, n) => {
   for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
   return a.slice(0, n);
 };
-
+let paper = [];
 function drawPaper() {
-  const paper = $('#mock-paper');
-  paper.replaceChildren();
-  const parts = [
-    ['코딩', '1문항', pick(CODING, 1).map((it) => [it, 'coding'])],
-    ['주관식', '5문항', pick(QUIZ, 5).map((it) => [it, 'quiz'])],
-    ['서술형', '2문항 (설계 1, 개념 1)', [...pick(DESIGN, 1), ...pick(CONCEPT, 1)].map((it) => [it, 'text'])],
-  ];
-  for (const [name, meta, items] of parts) {
-    const head = el('div', 'part');
-    head.append(el('h2', null, name), el('span', 'muted', meta));
-    const list = el('div', 'qlist');
-    items.forEach(([it, kind], i) => list.append(card(it, kind, name, i + 1, 'mock')));
-    paper.append(head, list);
+  const from = (gid, n) => pick(GROUPS.find((g) => g.id === gid).items, n).map((it) => byId.get(it.id));
+  const parts = [['코딩', '1문항', from('coding', 1)], ['주관식', '5문항', from('quiz', 5)], ['서술형', '2문항', [...from('design', 1), ...from('concept', 1)]]];
+  paper = parts.flatMap((p) => p[2]);
+  const box = $('#mock-paper');
+  box.replaceChildren();
+  for (const [name, meta, list] of parts) {
+    box.insertAdjacentHTML('beforeend', `<div class="mock-part"><h2>${name}</h2><span class="muted small">${meta}</span></div>`);
+    for (const e of list) {
+      const q = document.createElement('section');
+      q.className = 'mock-q';
+      q.innerHTML = `<div class="crumb"><a href="#/q/${e.item.id}">${esc(e.group.name)} ${pad(e.no)}</a></div>
+        ${e.group.kind === 'coding' ? `<h3>${esc(e.item.title)}</h3>` : ''}${questionHead(e)}`;
+      q.append(answerBox(e, 'mock'));
+      box.append(q);
+    }
   }
   resetTimer();
+  if (route === 'mock') refreshSide();
 }
 
+const mockSide = document.createElement('div');
+mockSide.innerHTML = `<h4>타이머</h4><div class="timer" id="timer" aria-live="polite">90:00</div>
+  <div class="side-ctrl">
+    <select id="sel-min" aria-label="제한 시간"><option value="60">60분</option><option value="90" selected>90분</option><option value="120">120분</option><option value="150">150분</option></select>
+    <button class="btn ghost" id="btn-timer" type="button">시작</button>
+    <button class="btn ghost" id="btn-reset" type="button">초기화</button>
+    <button class="btn" id="btn-draw" type="button">새 시험지</button>
+  </div>
+  <h4>이번 시험지</h4><div id="mock-list"></div>`;
+const timer = mockSide.querySelector('#timer');
+const timerBtn = mockSide.querySelector('#btn-timer');
+const selMin = mockSide.querySelector('#sel-min');
 let remain = 90 * 60;
 let ticking = null;
-const timer = $('#timer');
-const timerBtn = $('#btn-timer');
 function showTime() {
   if (remain <= 0) { timer.textContent = '시간 종료'; timer.classList.add('over'); return; }
   timer.classList.remove('over');
-  timer.textContent = `${String(Math.floor(remain / 60)).padStart(2, '0')}:${String(remain % 60).padStart(2, '0')}`;
+  timer.textContent = `${pad(Math.floor(remain / 60))}:${pad(remain % 60)}`;
 }
 function resetTimer() {
   clearInterval(ticking);
   ticking = null;
-  remain = Number($('#sel-min').value) * 60;
+  remain = Number(selMin.value) * 60;
   timerBtn.textContent = '시작';
   showTime();
 }
@@ -265,34 +292,35 @@ timerBtn.addEventListener('click', () => {
     if (remain <= 0) { clearInterval(ticking); ticking = null; timerBtn.textContent = '시작'; }
   }, 1000);
 });
-$('#btn-reset').addEventListener('click', resetTimer);
-$('#sel-min').addEventListener('change', resetTimer);
-$('#btn-draw').addEventListener('click', drawPaper);
+mockSide.querySelector('#btn-reset').addEventListener('click', resetTimer);
+selMin.addEventListener('change', resetTimer);
+mockSide.querySelector('#btn-draw').addEventListener('click', drawPaper);
 
-// ---------- 탭 ----------
-const TABS = ['trend', 'coding', 'quiz', 'essay', 'mock'];
-function showTab(name, push) {
-  if (!TABS.includes(name)) name = 'trend';
-  document.querySelectorAll('.tabs button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
-  TABS.forEach((t) => { $(`#panel-${t}`).hidden = t !== name; });
-  local.set('toss-tab', name);
-  if (push) history.replaceState(null, '', `#${name}`);
+// ---------- 라우팅 (#/overview, #/mock, #/records, #/q/<id>) ----------
+function go() {
+  const [, view = 'overview', id] = location.hash.split('/');
+  route = view === 'q' && id ? 'question' : ['mock', 'records'].includes(view) ? view : 'overview';
+  current = route === 'question' ? id : null;
+  document.body.dataset.view = route;
+  document.querySelectorAll('.views a').forEach((a) => a.classList.toggle('active', a.dataset.view === route));
+  if (route === 'question') renderQuestion(id);
+  renderTree();
+  refreshSide();
+  // 현재 문항이 사이드바 밖에 있으면 사이드바만 스크롤한다 (scrollIntoView 는 모바일에서 페이지까지 움직인다)
+  const active = document.querySelector('.file.active');
+  const bar = $('.sidebar');
+  if (active) {
+    const top = active.getBoundingClientRect().top - bar.getBoundingClientRect().top + bar.scrollTop;
+    if (top < bar.scrollTop || top > bar.scrollTop + bar.clientHeight - 40) bar.scrollTop = top - bar.clientHeight / 2;
+  }
 }
-document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
-  showTab(b.dataset.tab, true);
-  const top = $('.mast').offsetHeight;
-  if (window.scrollY > top) window.scrollTo({ top, behavior: 'instant' });
-}));
+window.addEventListener('hashchange', go);
 
-window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
-
-renderBank();
+$('#bank-total').textContent = ORDER.length;
 drawPaper();
-showTab(location.hash.slice(1) || local.get('toss-tab') || 'trend');
+go();
 
 connect()
   .then(() => { subsState = 'ready'; })
   .catch((e) => { subsState = 'error'; console.error('Firestore 연결 실패', e); })
-  .finally(() => {
-    new Set([...CODING, ...QUIZ, ...DESIGN, ...CONCEPT].map((x) => x.id)).forEach(refresh);
-  });
+  .finally(() => { renderTree(); refreshSide(); });
