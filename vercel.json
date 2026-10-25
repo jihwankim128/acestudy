@@ -3,6 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "site",
   "rewrites": [
+    { "source": "/toss", "destination": "/toss/index.html" },
     { "source": "/api/graph", "destination": "/data/graph.json" },
     { "source": "/api/notes", "destination": "/data/notes.json" },
     { "source": "/api/schedule", "destination": "/data/schedule.json" }

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Toss 스터디 | AceStudy</title>
+  <meta name="description" content="토스증권 서버 필기(코딩 1, 주관식 5, 서술형 2) 대비 문제은행과 팀 답안 기록" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/toss/toss.css" />
+</head>
+<body>
+  <header class="mast">
+    <div class="wrap">
+      <nav class="tracks" aria-label="스터디 트랙">
+        <a href="/">CS 스터디</a>
+        <a href="/toss" aria-current="page">Toss 스터디</a>
+      </nav>
+      <div class="mast-grid">
+        <div>
+          <h1>토스증권 서버 필기</h1>
+          <p class="sub">공개 기출과 토스증권 기술 글로 만든 문제를 풀고, 팀원의 답안과 나란히 비교합니다.</p>
+        </div>
+        <dl class="format" aria-label="시험 구성">
+          <div><dt>코딩</dt><dd>1</dd></div>
+          <div><dt>주관식</dt><dd>5</dd></div>
+          <div><dt>서술형</dt><dd>2</dd></div>
+        </dl>
+      </div>
+    </div>
+  </header>
+
+  <div class="bar">
+    <div class="wrap bar-inner">
+      <div class="tabs" role="tablist" aria-label="섹션">
+        <button role="tab" type="button" data-tab="trend" aria-selected="true">출제 경향</button>
+        <button role="tab" type="button" data-tab="coding" aria-selected="false">코딩<span class="n" id="n-coding"></span></button>
+        <button role="tab" type="button" data-tab="quiz" aria-selected="false">주관식<span class="n" id="n-quiz"></span></button>
+        <button role="tab" type="button" data-tab="essay" aria-selected="false">서술형<span class="n" id="n-essay"></span></button>
+        <button role="tab" type="button" data-tab="mock" aria-selected="false">모의고사</button>
+      </div>
+      <div class="who">
+        <label for="who">이름</label>
+        <input id="who" maxlength="30" autocomplete="nickname" placeholder="제출할 때 표시돼요" />
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section class="panel" id="panel-trend">
+      <h2>무엇이 나올까</h2>
+      <p class="note">토스증권의 이번 시험 문항은 공개되지 않았습니다. 아래 <span class="tag-fact">확인</span>은 출처가 있는 사실, <span class="tag-guess">추정</span>은 그 사실에서 끌어낸 제 예측입니다.</p>
+
+      <div class="grid2">
+        <div class="box">
+          <h3>코딩 테스트</h3>
+          <ul>
+            <li><span class="tag-fact">확인</span> 토스 서버 직군 코테는 고난도 알고리즘보다 <b>요구사항을 정확히 읽고 구현</b>하는 문제가 중심이라는 후기가 반복됩니다. 2021년은 6문제/2시간, 2022년은 7문제/90분.</li>
+            <li><span class="tag-fact">확인</span> 2022년 후기 기준 유형: 문자열·반복 구현, 값 범위가 커서 압축이 필요한 문제, map/set 활용, 마지막 1문제만 골드5 수준.</li>
+            <li><span class="tag-fact">확인</span> 공개 기출: <code>멋쟁이 숫자</code>(서버 직군, 문자열+반복), <code>Lockfile을 만들어보자</code>(의존성 그래프 재귀 탐색, 결정적 버전 선택).</li>
+            <li><span class="tag-guess">추정</span> 이번엔 1문제뿐이라 <b>증권 도메인 시나리오를 그대로 구현</b>하는 중간 난이도일 가능성이 큽니다. 주문 매칭, 원장 반영, 시세 집계, 유량 제어처럼 자료구조 선택(우선순위 큐, 해시맵, 덱)이 핵심인 형태.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>주관식·서술형</h3>
+          <ul>
+            <li><span class="tag-fact">확인</span> 과거 서버 직군 서술형은 30분에 5~6문항, 문항당 약 5분. 검색 없이 아는 지식으로 답하게 설계됐고, 대용량 트래픽 시스템이나 신뢰도 있는 상품을 만드는 실무 상황을 물었다는 후기가 있습니다.</li>
+            <li><span class="tag-fact">확인</span> 토스증권 공식 글이 직접 강조하는 주제: 정합성과 트랜잭션, CQRS 읽기 뷰와 검증, 모니터링, 장애 트러블슈팅 순서, 통합 레이어.</li>
+            <li><span class="tag-guess">추정</span> 시험 구성에 주관식 5와 서술형 2가 따로 적혀 있으므로, 주관식은 <b>답이 하나로 정해진 단답형</b>(용어, 빈칸, 계산, 출력 예측)일 가능성이 높습니다. 토스가 형식을 공개한 적은 없어서, 2~3문장 짧은 서술로 나올 경우에 대비해 서술형 탭에 개념 서술 문항을 함께 두었습니다.</li>
+            <li><span class="tag-guess">추정</span> 서술형은 CS 개념(격리수준, 인덱스, TCP, 스레드, GC)을 <b>서버 장애 장면으로 비틀거나</b>, 토스증권이 실제로 겪은 문제(브로커 지연, 시세 fan-out, 원장 정합성)를 설계 문제로 낼 것으로 봅니다.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>토스증권이 공개한 기술 소재</h2>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>소재</th><th>핵심 내용</th><th>연결 문항</th></tr></thead>
+          <tbody>
+            <tr><td>해외주식 서비스 안정화 (toss.tech)</td><td>미국 정규장 개장 직후 TPS가 비정규장의 20배 이상. 예약주문 약 100만 건을 브로커 TPS 상한 이하로 보내려 resilience4j RateLimiter 사용, TPS는 배치 파라미터로 주입. 1분 실패 수 임계치로 이상 감지 → 서브 브로커로 자동 failover. 원천은 Oracle 날짜 파티션, 계좌 조회용은 MongoDB.</td><td>설계 1, 개념 6·15, 단답 13·26</td></tr>
+            <tr><td>서버 챕터 FAQ (토스 커리어)</td><td>원본 Oracle + 읽기 뷰 분리(CQRS), Vitess(MySQL 샤딩)로 수평 확장, p95 약 40ms. 읽기 뷰는 실시간 검증기와 매일 잔차 배치로 오염 확인. 모니터링 지표는 에러 수, 스레드 고갈, API 실패율, Kafka lag. 장애 시 변경 이력 → 분산 추적(Jaeger, Pinpoint) → tcpdump·thread dump.</td><td>설계 4·5, 개념 11·14, 단답 23</td></tr>
+            <tr><td>Kafka 이중화 #3 (toss.tech)</td><td>Active-Active 클러스터 간 consumer offset 동기화. 재난 시 유실은 절대 불가, 중복은 최소화. MM2의 보수적 offset 변환, timestamp 기반 offset 검색.</td><td>개념 4·17, 단답 28</td></tr>
+            <tr><td>SLASH 발표</td><td>토스증권 실시간 시세 적용기(22), 애플 한 주가 고객에게 전달되기까지: 주문 동시성·브로커 장애 격리(22), 실시간 시세 데이터 안전하고 빠르게 처리하기(23), SSE 이벤트 푸쉬로 Polling 제거(24), 리플레이 검증으로 새 금융 시스템 도입(24), ClickHouse 랭킹(24).</td><td>설계 2·3·6, 개념 12, 단답 24</td></tr>
+            <tr><td>통합원장 (토스 유튜브)</td><td>「체결부터 잔고까지 0.03초, 통합원장 서버 개발」. 제목만 확인했고 본문은 확인하지 못했습니다. 시험 전에 한 번 보기를 권합니다.</td><td>설계 2</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>답안 쓰는 틀</h2>
+      <div class="grid2">
+        <div class="box">
+          <h3>주관식 · 단답형</h3>
+          <ul>
+            <li>정식 용어로 씁니다. 한글과 영문이 둘 다 있으면 같이 적습니다. 예: 멱등성(idempotency).</li>
+            <li>계산 문항은 단위까지 씁니다. 300개, 500초.</li>
+            <li>출력 예측은 한 번 더 의심합니다. <code>equals</code>와 <code>compareTo</code>, 정수 나눗셈, 오버플로.</li>
+            <li>모르면 비워 두지 말고 가장 가까운 개념이라도 씁니다.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>서술형 · 개념 (문항당 5분 안팎)</h3>
+          <ul>
+            <li>첫 줄에 결론 한 문장.</li>
+            <li>왜 그런지 메커니즘을 한 단계 아래 계층으로 설명 (DB면 락·MVCC, 네트워크면 TCP 상태).</li>
+            <li>대응책은 두 개 이상, 각각의 비용을 한 마디씩.</li>
+            <li>숫자가 있으면 계산을 보여 줍니다. 예: 100 req/s × 3s = 동시 300.</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>서술형 · 설계 (문항당 15분 안팎)</h3>
+          <ul>
+            <li>무엇이 깨지면 안 되는지부터 정의합니다. 증권은 거의 항상 유실 없음, 중복 없음, 잔고 정합성.</li>
+            <li>숫자로 병목을 찾습니다. TPS, 지연, 건수.</li>
+            <li>구조 → 실패 시나리오(타임아웃, 중복, 순서 역전, 부분 장애) → 트레이드오프 순서로 씁니다.</li>
+            <li>마지막에 관측과 검증: 어떤 지표로 알아채고, 어떻게 대사(reconciliation)할지.</li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>출처</h2>
+      <ul class="sources">
+        <li><a href="https://toss.im/career/article/next-developer-2023-sample-questions" target="_blank" rel="noopener">[토스 NEXT] 2022년 코딩테스트 기출문제 공개</a></li>
+        <li><a href="https://toss.im/career/article/secu_server-chapter-2" target="_blank" rel="noopener">토스증권 서버 개발자가 많이 듣는 질문 4가지</a></li>
+        <li><a href="https://toss.im/career/article/sec_server_2602" target="_blank" rel="noopener">토스증권 서버 개발자 인터뷰, 어땠을까요?</a></li>
+        <li><a href="https://toss.tech/article/overseas-securities-server" target="_blank" rel="noopener">우리는 어떻게 해외주식 서비스 안정화를 이뤘는가</a></li>
+        <li><a href="https://toss.tech/series/securities-realtime-data" target="_blank" rel="noopener">토스증권 Realtime Data Team 시리즈 (Kafka 이중화, CDC)</a></li>
+        <li><a href="https://toss.im/slash-23/session" target="_blank" rel="noopener">SLASH 23 세션</a> · <a href="https://toss.im/slash-24/sessions" target="_blank" rel="noopener">SLASH 24 세션</a> · <a href="https://toss.im/slash-22/sessions/2-7" target="_blank" rel="noopener">애플 한 주가 고객에게 전달되기까지</a></li>
+        <li><a href="https://www.youtube.com/watch?v=CU4OTU03EXI" target="_blank" rel="noopener">체결부터 잔고까지 0.03초, 통합원장 서버 개발</a></li>
+        <li><a href="https://hvho.github.io/2021-08-16/toss-coding-interview" target="_blank" rel="noopener">2021 토스 코딩테스트 후기 (Server)</a> · <a href="https://seongmok.com/75" target="_blank" rel="noopener">2022 토스 NEXT 서버 코딩테스트 후기</a></li>
+      </ul>
+    </section>
+
+    <section class="panel" id="panel-coding" hidden>
+      <header class="panel-head">
+        <h2>코딩</h2>
+        <p>시험에는 1문제가 나옵니다. 다섯 문제는 각각 다른 자료구조를 쓰도록 골랐고, 모범 풀이는 Java입니다.</p>
+      </header>
+      <div class="qlist" id="list-coding"></div>
+    </section>
+
+    <section class="panel" id="panel-quiz" hidden>
+      <header class="panel-head">
+        <h2>주관식</h2>
+        <p>답이 하나로 정해지는 단답형입니다. 용어, 빈칸, 계산, 출력 예측으로 나눴습니다. 답을 적고 제출한 뒤 모범답안과 팀원 답을 비교하세요.</p>
+      </header>
+      <div class="qlist" id="list-quiz"></div>
+    </section>
+
+    <section class="panel" id="panel-essay" hidden>
+      <header class="panel-head">
+        <h2>서술형 · 설계</h2>
+        <p>문항당 15분 안팎입니다. 모범답안은 채점 포인트 목록이니 내 답이 몇 개를 짚었는지 세어 보세요.</p>
+      </header>
+      <div class="qlist" id="list-design"></div>
+      <header class="panel-head group-gap">
+        <h2>서술형 · 개념</h2>
+        <p>문항당 5분 안팎의 짧은 서술입니다. 주관식이 2~3문장 서술로 나와도 이 문항들로 대비할 수 있습니다.</p>
+      </header>
+      <div class="qlist" id="list-concept"></div>
+    </section>
+
+    <section class="panel" id="panel-mock" hidden>
+      <header class="panel-head">
+        <h2>모의고사</h2>
+        <p>코딩 1, 주관식 5, 서술형 2(설계 1, 개념 1)를 무작위로 뽑습니다. 실제 제한 시간을 모르면 90분으로 연습하세요.</p>
+      </header>
+      <div class="toolbar">
+        <button class="btn" id="btn-draw" type="button">새 시험지</button>
+        <label for="sel-min">제한 시간</label>
+        <select id="sel-min">
+          <option value="60">60분</option>
+          <option value="90" selected>90분</option>
+          <option value="120">120분</option>
+          <option value="150">150분</option>
+        </select>
+        <button class="btn ghost" id="btn-timer" type="button">시작</button>
+        <button class="btn ghost" id="btn-reset" type="button">초기화</button>
+        <span class="timer" id="timer" aria-live="polite">90:00</span>
+      </div>
+      <div id="mock-paper"></div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">제출한 답안은 이 페이지를 여는 모든 사람이 볼 수 있고, 제출 후에는 수정하거나 지울 수 없습니다.</div>
+  </footer>
+
+  <script type="module" src="/toss/toss.js"></script>
+</body>
+</html>

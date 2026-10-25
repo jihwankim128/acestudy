@@ -26,6 +26,9 @@ a { color: inherit; text-decoration: none; }
 .vault { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 4px 8px 12px; }
 .logo { color: var(--accent); }
 .progress { margin-left: auto; font-size: 12px; color: var(--fg-muted); font-weight: 400; }
+.tracks { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin: 0 4px 10px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; }
+.tracks a { text-align: center; padding: 4px 8px; border-radius: 6px; color: var(--fg-muted); font-size: 12.5px; font-weight: 500; }
+.tracks a[aria-current="page"], .tracks a:hover { background: var(--bg-hover); color: var(--fg); }
 .views { display: flex; gap: 4px; padding: 0 4px 10px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
 .views a { padding: 3px 10px; border-radius: 6px; color: var(--fg-muted); font-size: 13px; }
 .views a.active, .views a:hover { background: var(--bg-hover); color: var(--fg); }
