@@ -11,11 +11,13 @@ const pad = (n) => String(n).padStart(2, '0');
 const plain = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
 const meter = (pct, color) => `<span class="meter"><i style="width:${pct}%;background:${color}"></i></span>`;
 
+// 시험 시간 배분(주관식 5문항 25분, 서술형 2문항 30분)에 맞춘 분류.
+// 주관식은 문항당 5분짜리 짧은 서술이 본체이고, 키워드는 용어·숫자형 대비용이다.
 const GROUPS = [
   { id: 'coding', name: '코딩', label: '코딩', color: '--c-arch', kind: 'coding', items: CODING },
-  { id: 'quiz', name: '주관식 · 단답', label: '단답', color: '--c-os', kind: 'quiz', items: QUIZ },
-  { id: 'design', name: '서술형 · 설계', label: '설계', color: '--c-db', kind: 'text', items: DESIGN },
-  { id: 'concept', name: '서술형 · 개념', label: '개념', color: '--c-net', kind: 'text', items: CONCEPT },
+  { id: 'short', name: '주관식 · 서술', label: '주관식', color: '--c-os', kind: 'text', items: CONCEPT },
+  { id: 'keyword', name: '주관식 · 키워드', label: '키워드', color: '--c-net', kind: 'quiz', items: QUIZ },
+  { id: 'essay', name: '서술형 · 설계', label: '서술형', color: '--c-db', kind: 'text', items: DESIGN },
 ];
 const ORDER = GROUPS.flatMap((g) => g.items.map((item, i) => ({ item, group: g, no: i + 1 })));
 const byId = new Map(ORDER.map((e) => [e.item.id, e]));
@@ -165,7 +167,10 @@ function answerBox(e, scope) {
   model.addEventListener('toggle', () => {
     const ans = model.querySelector('.ans');
     if (!model.open || ans.childElementCount) return;
-    ans.innerHTML = group.kind === 'coding' ? item.approach : item.a;
+    ans.innerHTML = group.kind === 'coding' ? item.approach
+      : item.brief ? `<div class="brief"><span class="label-sm">5분 답안</span><p>${item.brief}</p></div>
+        <span class="label-sm">자세한 해설</span>${item.a}`
+      : item.a;
     if (group.kind === 'coding') ans.insertAdjacentHTML('beforeend', `<pre><code>${esc(item.code)}</code></pre>`);
     if (group.kind === 'quiz' && item.ref) {
       const ref = ORDER.find((x) => `${x.group.label} ${x.no}` === item.ref);
@@ -277,7 +282,11 @@ const pick = (arr, n) => {
 let paper = [];
 function drawPaper() {
   const from = (gid, n) => pick(GROUPS.find((g) => g.id === gid).items, n).map((it) => byId.get(it.id));
-  const parts = [['코딩', '1문항', from('coding', 1)], ['주관식', '5문항', from('quiz', 5)], ['서술형', '2문항', [...from('design', 1), ...from('concept', 1)]]];
+  const parts = [
+    ['코딩', '1문항', from('coding', 1)],
+    ['주관식', '5문항 · 25분 (서술 4, 키워드 1)', [...from('short', 4), ...from('keyword', 1)]],
+    ['서술형', '2문항 · 30분', from('essay', 2)],
+  ];
   paper = parts.flatMap((p) => p[2]);
   const box = $('#mock-paper');
   box.replaceChildren();
@@ -297,18 +306,30 @@ function drawPaper() {
 }
 
 const mockSide = document.createElement('div');
-mockSide.innerHTML = `<h4>타이머</h4><div class="timer" id="timer" aria-live="polite">90:00</div>
+// 구간 타이머: 안내받은 시간(주관식 25분, 서술형 30분)과 시간이 정해지지 않은 코딩
+mockSide.innerHTML = `<h4>타이머</h4>
+  <div class="phases" role="group" aria-label="시험 구간">
+    <button type="button" data-min="25" aria-pressed="true">주관식 25분</button>
+    <button type="button" data-min="30" aria-pressed="false">서술형 30분</button>
+    <button type="button" data-min="60" aria-pressed="false">코딩 60분</button>
+  </div>
+  <div class="timer" id="timer" aria-live="polite">25:00</div>
   <div class="side-ctrl">
-    <select id="sel-min" aria-label="제한 시간"><option value="60">60분</option><option value="90" selected>90분</option><option value="120">120분</option><option value="150">150분</option></select>
     <button class="btn ghost" id="btn-timer" type="button">시작</button>
     <button class="btn ghost" id="btn-reset" type="button">초기화</button>
     <button class="btn" id="btn-draw" type="button">새 시험지</button>
   </div>
+  <p class="muted small side-note">코딩 시간은 안내가 없어 60분으로 두었어요.</p>
   <h4>이번 시험지</h4><div id="mock-list"></div>`;
 const timer = mockSide.querySelector('#timer');
 const timerBtn = mockSide.querySelector('#btn-timer');
-const selMin = mockSide.querySelector('#sel-min');
-let remain = 90 * 60;
+let phaseMin = 25;
+mockSide.querySelectorAll('.phases button').forEach((b) => b.addEventListener('click', () => {
+  mockSide.querySelectorAll('.phases button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  phaseMin = Number(b.dataset.min);
+  resetTimer();
+}));
+let remain = phaseMin * 60;
 let ticking = null;
 function showTime() {
   if (remain <= 0) { timer.textContent = '시간 종료'; timer.classList.add('over'); return; }
@@ -318,7 +339,7 @@ function showTime() {
 function resetTimer() {
   clearInterval(ticking);
   ticking = null;
-  remain = Number(selMin.value) * 60;
+  remain = phaseMin * 60;
   timerBtn.textContent = '시작';
   showTime();
 }
@@ -333,7 +354,6 @@ timerBtn.addEventListener('click', () => {
   }, 1000);
 });
 mockSide.querySelector('#btn-reset').addEventListener('click', resetTimer);
-selMin.addEventListener('change', resetTimer);
 mockSide.querySelector('#btn-draw').addEventListener('click', drawPaper);
 
 // ---------- 라우팅 (#/overview, #/mock, #/records, #/q/<id>) ----------

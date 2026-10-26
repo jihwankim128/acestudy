@@ -91,6 +91,12 @@ select { width: auto; padding: 5px 8px; }
 .timer { margin: 2px 8px 8px; font: 500 30px/1.1 "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
 .timer.over { color: var(--danger); font-size: 20px; }
 .side-ctrl { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 8px; }
+.side-note { margin: 8px 8px 0; }
+.phases { display: grid; gap: 2px; margin: 0 8px 8px; padding: 3px; border: 1px solid var(--line); border-radius: 8px; }
+.phases button { font: 500 12.5px Inter, system-ui, sans-serif; text-align: left; padding: 4px 8px; border: 0; border-radius: 6px; background: none; color: var(--fg-muted); cursor: pointer; }
+.phases button:hover, .phases button[aria-pressed="true"] { background: var(--bg-hover); color: var(--fg); }
+.brief { border-left: 3px solid var(--accent); padding: 2px 0 2px 12px; }
+.brief .label-sm, .ans > .label-sm { margin-top: 4px; }
 
 /* 모의고사 문항 */
 .mock-part { margin: 30px 0 4px; display: flex; align-items: baseline; gap: 10px; }
