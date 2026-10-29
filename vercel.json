@@ -7,7 +7,7 @@
     { "source": "/toss-notes", "destination": "/toss-notes/index.html" },
     { "source": "/api/graph", "destination": "/data/graph.json" },
     { "source": "/api/notes", "destination": "/data/notes.json" },
-    { "source": "/api/schedule", "destination": "/data/schedule.json" }
+    { "source": "/api/team", "destination": "/data/team.json" }
   ],
   "headers": [
     { "source": "/data/(.*).json", "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }] },

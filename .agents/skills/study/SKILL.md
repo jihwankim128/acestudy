@@ -1,6 +1,6 @@
 ---
 name: study
-description: AceStudy CS 학습 세션. 내게 배정된 다음 토픽을 10~20분 학습하고, 노트와 시각화를 만들고, DB에 쌓인 노트를 보고 선행/후속 그래프 링크를 매핑한 뒤 PR을 올린다. "공부하자", "학습 시작", "study", "다음 토픽" 같은 요청에 사용.
+description: AceStudy CS 학습 세션. 아직 아무도 학습하지 않은 다음 토픽을 10~20분 학습하고, 노트와 시각화를 만들고, DB에 쌓인 노트를 보고 선행/후속 그래프 링크를 매핑한 뒤 PR을 올린다. "공부하자", "학습 시작", "study", "다음 토픽" 같은 요청에 사용.
 ---
 
 # study — AceStudy 학습 세션
@@ -15,13 +15,21 @@ Claude Code(`/study`)와 Codex(`$study`)가 함께 쓰는 스킬이다. 전체 �
 gh api user -q .login                 # 내 GitHub 아이디
 git switch main && git pull
 npm install                           # 처음 한 번
-npm run context -- <아이디>            # next / studiedNotes / allTopics
+npm run context -- <아이디>            # next / reason / inProgress / studiedNotes / allTopics
+npm run context -- <아이디> <topic-id> # 하고 싶은 토픽이 있으면 지정 (이미 학습했거나 진행 중이면 reason 으로 알려줌)
 ```
+- 토픽은 미리 배정되지 않는다. `next` 는 아무도 학습하지 않았고 진행 중(열린 `study/*` PR)도 아닌 토픽 중 랜덤이다.
+  사용자에게 `next` 와 `reason` 을 보여주고 이 토픽으로 할지 확인한다. 바꾸고 싶다면 다시 고른다.
 - `expand.recommended` 가 true 이면 사용자에게 알리고 `expand` 스킬로 토픽 확장을 먼저 할지 묻는다.
-  `next` 가 null 이면 배정된 토픽을 다 끝낸 것이다 → `expand` 스킬로 이어간다.
-- 다른 사람에게 배정된 토픽은 학습하지 않는다.
+  `next` 가 null 이면 남은 토픽이 없다 → `expand` 스킬로 이어간다.
+- 이미 학습된 토픽이나 다른 팀원이 진행 중인 토픽은 학습하지 않는다.
+
+토픽이 정해지면 **바로 draft PR을 열어 토픽을 잡는다.** 그래야 다른 팀원이 같은 토픽을 고르지 않는다.
 ```bash
 git switch -c study/<topic-id>
+git commit --allow-empty -m "study(<topic-id>): 학습 시작"
+git push -u origin study/<topic-id>
+gh pr create --draft --base main --title "study(<topic-id>): <제목>" --body "학습 진행 중"
 ```
 
 ## 2. 학습 (10~20분) — 페르소나의 "세션 리듬"대로
@@ -61,5 +69,7 @@ npm run check
 git add notes/<category>/<topic-id>.*
 git commit -m "study(<topic-id>): <한 줄 요약>"
 git push -u origin study/<topic-id>
-gh pr create --base main --title "study(<topic-id>): <제목>" --body "<요약 + 추가한 링크와 근거>"
+gh pr edit --body "<요약 + 추가한 링크와 근거>"
+gh pr ready
 ```
+- 학습을 포기하면 `gh pr close --delete-branch` 로 토픽을 풀어준다.

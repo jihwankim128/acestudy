@@ -1,6 +1,6 @@
 # AceStudy — 에이전트 작업 가이드
 
-3명이 각자 AI 에이전트와 CS를 학습하고, 결과를 **하나의 지식 그래프**로 쌓는 저장소다.
+팀원들이 각자 AI 에이전트와 CS를 학습하고, 결과를 **하나의 지식 그래프**로 쌓는 저장소다.
 에이전트는 이 문서를 먼저 읽고 아래 절차를 따른다.
 스킬: 학습 세션 `study`, 토픽 확장 `expand`, PR 리뷰 `review` (`.agents/skills/`). Codex는 `$study`, Claude Code는 `/study` 처럼 실행한다.
 (`.claude/skills` 는 `.agents/skills` 를 가리키는 심볼릭 링크라서 두 에이전트가 같은 스킬을 쓴다.)
@@ -41,20 +41,22 @@
   "이 문제를 이해하려면 어떤 기본 지식이 필요한가"와 "이 기본 지식이 어떤 실제 사례에 쓰이는가"를 양방향으로 찾아간다.
   그래서 지금 링크를 촘촘하고 정확하게 까는 것이 노트 본문만큼 중요하다.
 
-## 배정 규칙
+## 토픽 선택 규칙 (미리 배정하지 않음)
 
 - `curriculum/topics.yaml`: 토픽 풀. 토픽 하나 = 10~20분 학습 분량. 순서나 선행관계는 없다.
-- `curriculum/schedule.yaml`: `npm run assign` 이 생성한 랜덤 배정표.
-  - 세션 하나 = 카테고리 하나. 팀원마다 그 카테고리 안의 서로 다른 토픽을 1개씩 맡는다.
-  - 토픽은 딱 한 사람에게만 배정된다 → **겹침 없음**.
-- **자기에게 배정된 토픽만 학습한다.** 세션 번호가 낮은 것부터.
+- `curriculum/team.yaml`: 팀원 목록. 토픽을 미리 사람에게 배정하지 않는다.
+- **학습한 사람만 토픽에 연결된다.** 노트의 `author` 가 그 토픽의 사람이다. 미진행 토픽에는 아무도 연결되지 않는다.
+- 다음 토픽은 `npm run context` 가 고른다: 아무도 학습하지 않았고, 다른 팀원이 진행 중이 아닌 토픽 중에서 카테고리를 하나 고르고 그 안에서 랜덤.
+  (기본 CS 70% 전까지는 기본 CS 카테고리 우선. 원하는 토픽이 있으면 `npm run context -- <id> <topic-id>`)
+- **진행 중 표시 = 열린 `study/<topic-id>` PR.** 학습을 시작하자마자 draft PR을 열어 토픽을 잡는다. 먼저 PR을 연 사람이 그 토픽을 가져가므로 **겹침 없음**.
 
 ## 학습 세션 절차 (`/study`)
 
 1. `git switch main && git pull`
 2. `npm run context -- <내 github-id>` 실행
-   - 출력: 내 다음 토픽(`next`), DB(Firestore)에 쌓인 노트 요약(`studiedNotes`), 전체 토픽 목록(`allTopics`)
-3. 브랜치 생성: `git switch -c study/<topic-id>`
+   - 출력: 다음 토픽(`next`), 진행 중인 토픽(`inProgress`), DB(Firestore)에 쌓인 노트 요약(`studiedNotes`), 전체 토픽 목록(`allTopics`)
+3. 브랜치 생성 + 토픽 잡기: `git switch -c study/<topic-id>` → 빈 커밋 push → **draft PR** (`study(<topic-id>): <제목>`)
+   - 이 PR이 열려 있는 동안 다른 팀원의 `context` 는 이 토픽을 고르지 않는다.
 4. 토픽의 `hook`(백엔드 관점)에서 출발해 사용자와 10~20분 분량으로 학습한다.
    - 질문, 설명, 예제를 섞고, 마지막에 확인 질문 2~3개를 낸다.
    - 범위를 넓히지 않는다. 다른 토픽 내용이 필요하면 설명하지 말고 링크로 넘긴다.
@@ -72,8 +74,7 @@
    - 본문의 "연결" 섹션에 `[[topic-id]]` 로 각 링크가 **왜** 연결되는지 한 줄씩 쓴다.
    - 다른 사람 노트는 수정하지 않는다. 역방향 링크(백링크)는 빌드가 자동 계산한다.
 8. `npm run check` 통과 확인
-9. 커밋 `study(<topic-id>): <한 줄 요약>` → push → PR 생성
-   - `gh pr create --fill --base main`
+9. 커밋 `study(<topic-id>): <한 줄 요약>` → push → draft PR 본문 갱신 후 `gh pr ready`
    - PR 본문에 추가한 링크 목록과 각 링크의 근거를 적는다.
 10. 팀원 PR은 `review` 스킬로 서로 리뷰한다. 학습자가 다른 사람의 노트로 한 번 더 배우는 시간이다.
 
@@ -83,17 +84,17 @@
 1. **매 학습마다** 노트의 `suggest` 에 새 토픽 후보를 1개 이상 남긴다 (필수).
    - 기존 카테고리에 맞지 않으면 새 카테고리를 제안한다: `category` 에 새 id, `category_name` 에 이름.
      예: `dist`(분산 시스템), `concurrency`(동시성 프로그래밍), `infra`(인프라/클라우드), `sec`(보안)
-2. `npm run context` 가 확장 시점을 알려준다 (`expand.recommended`): 내 남은 토픽이 2개 이하이거나, 제안이 6개 이상 쌓였을 때.
+2. `npm run context` 가 확장 시점을 알려준다 (`expand.recommended`): 아무도 학습하지 않은 토픽이 팀원 수의 2배 이하로 남았거나, 제안이 6개 이상 쌓였을 때.
 3. `expand` 스킬이 제안과 그래프 빈 곳을 근거로 새 토픽(10~20분, 백엔드 hook)을 만든다.
    새 카테고리 제안이 쌓이면 카테고리도 만든다.
-   `npm run assign` 이 기존 배정은 유지하고 새 토픽만 랜덤 배정한다. 결과는 `curriculum:` PR 로 올린다.
+   새 토픽은 사람에게 배정하지 않고 토픽 풀에만 추가한다. 결과는 `curriculum:` PR 로 올린다.
 4. 기본 CS 5개 카테고리(`arch`, `os`, `net`, `ds`, `db`)의 70% 이상 학습 여부가 `expand.practiceReady`다. 설계·실전·심화 토픽은 기본 CS 분모에 포함하지 않는다.
    이 값은 실전 학습 권장 기준이다. 사용자가 후속 학습 목차를 요청하면 완료율과 관계없이 `practice` 카테고리와 후속 심화 목차를 미리 추가할 수 있다.
    실전 토픽은 증상에서 출발하고, 학습 노트의 `prerequisites`로 기본 토픽 2개 이상에 연결된다. 목차를 추가할 때의 권장 연결은 `curriculum/roadmap.md`에 남긴다.
 5. 각 영역에서 개념 → 재현 가능한 코드·실험 → 증거로 진단 → 설계 판단 → 다음 심화의 후보를 찾는다.
    규모가 크면 기능 전체를 한 토픽에 넣지 말고, 하나의 동작·실패 경계·트레이드오프로 쪼갠다. 실제 코드베이스를 제공받았다면 해당 코드의 재현과 관측을 출발점으로 삼는다.
 6. `advanced`도 마지막 단계가 아니다. 학습 중 발견한 미해결 질문을 `suggest`로 남겨 다시 `expand`한다.
-   카테고리의 `stage`는 영역 구분용 선택 필드이며, 단계명은 필요하면 늘린다. 학습 순서는 기존 배정 규칙을 따르고 선행관계는 노트의 그래프로 관리한다.
+   카테고리의 `stage`는 영역 구분용 선택 필드이며, 단계명은 필요하면 늘린다. 학습 순서는 토픽 선택 규칙을 따르고 선행관계는 노트의 그래프로 관리한다.
 
 ## 규칙
 
@@ -106,8 +107,7 @@
 ```
 curriculum/topics.yaml       토픽 풀 (카테고리 → 토픽, hook)
 curriculum/roadmap.md        학습 영역, 실전의 기본 연결, 지속 확장 절차
-curriculum/team.yaml         팀원, 랜덤 시드
-curriculum/schedule.yaml     세션별 배정표 (자동 생성)
+curriculum/team.yaml         팀원 목록 (토픽 배정 없음)
 curriculum/note-template.md  노트 템플릿
 curriculum/viz-template.html 시각화 템플릿
 notes/<category>/<id>.md     학습 노트 — 이 폴더를 옵시디언 vault 로 열 수 있음
@@ -116,6 +116,6 @@ toss-notes/<github-id>/      Toss 학습 노트. 팀원마다 자기 폴더를 �
 .agents/skills/study/        학습 세션 스킬 (Codex / Claude Code 공용)
 .agents/skills/expand/       토픽 풀 확장 스킬
 .agents/skills/review/       팀원 학습 PR 리뷰 스킬
-scripts/                     assign / build-index / context / sync-firestore
+scripts/                     build-index / context / sync-firestore
 site/ + vercel.json          Vercel 페이지 + /api/*
 ```

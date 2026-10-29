@@ -11,10 +11,6 @@ const readYaml = async (path) => parse(await readFile(join(ROOT, path), 'utf8'))
 
 export const loadTopics = () => readYaml('curriculum/topics.yaml');
 export const loadTeam = () => readYaml('curriculum/team.yaml');
-export async function loadSchedule() {
-  if (!existsSync(join(ROOT, 'curriculum/schedule.yaml'))) return [];
-  return (await readYaml('curriculum/schedule.yaml')).sessions ?? [];
-}
 
 // notes/<category>/<topic-id>.md — notes/ 는 그대로 옵시디언 vault 로 열 수 있다.
 export async function loadNotes() {
@@ -57,13 +53,10 @@ function splitFrontmatter(text) {
   return { meta: parse(m[1]) ?? {}, body: m[2].trim() };
 }
 
-// 토픽 풀 + 배정 + 노트를 합쳐 지식 그래프를 만든다.
+// 토픽 풀 + 노트를 합쳐 지식 그래프를 만든다.
+// 미리 배정하지 않는다: 토픽의 owner 는 그 토픽을 학습해 노트를 쓴 사람이고, 미진행 토픽은 null.
 // 엣지 방향: source(선행) → target(후속). leads_to 는 뒤집어서 같은 방향으로 맞춘다.
-export function buildGraph({ categories }, schedule, notes) {
-  const owner = new Map();
-  for (const s of schedule) {
-    for (const [member, topic] of Object.entries(s.assignments)) owner.set(topic, { member, session: s.session });
-  }
+export function buildGraph({ categories }, notes) {
   const noteByTopic = new Map(notes.map((n) => [n.topic, n]));
 
   const topics = categories.flatMap((c) =>
@@ -71,8 +64,7 @@ export function buildGraph({ categories }, schedule, notes) {
       ...t,
       category: c.id,
       categoryName: c.name,
-      owner: owner.get(t.id)?.member ?? null,
-      session: owner.get(t.id)?.session ?? null,
+      owner: noteByTopic.get(t.id)?.author ?? null,
       studied: noteByTopic.has(t.id),
     })),
   );
@@ -96,8 +88,8 @@ export function buildGraph({ categories }, schedule, notes) {
   return { topics, edges, unknown };
 }
 
-// PR 검증: 배정된 사람만, 존재하는 토픽으로만 링크
-export function validate(graph, notes) {
+// PR 검증: 팀원이 쓴 노트만, 존재하는 토픽으로만 링크
+export function validate(graph, notes, members) {
   const errors = [];
   const byId = new Map(graph.topics.map((t) => [t.id, t]));
   const knownCategories = new Set(graph.topics.map((t) => t.category));
@@ -105,7 +97,7 @@ export function validate(graph, notes) {
     const t = byId.get(n.topic);
     if (!t) { errors.push(`${n.path}: topics.yaml 에 없는 topic '${n.topic}'`); continue; }
     if (!n.path.startsWith(`notes/${t.category}/`)) errors.push(`${n.path}: notes/${t.category}/ 아래에 있어야 함`);
-    if (t.owner && n.author !== t.owner) errors.push(`${n.path}: 담당자는 ${t.owner} (author: ${n.author})`);
+    if (!members.includes(n.author)) errors.push(`${n.path}: author '${n.author}' 는 curriculum/team.yaml 팀원이 아님`);
     if (!n.viz) errors.push(`${n.path}: 시각화 파일 ${n.path.replace(/\.md$/, '.viz.html')} 필요`);
     if (!n.prerequisites.length && !n.leads_to.length) errors.push(`${n.path}: prerequisites 또는 leads_to 링크가 최소 1개 필요`);
     if (!n.suggest.length) errors.push(`${n.path}: suggest(새 토픽 제안) 최소 1개 필요`);

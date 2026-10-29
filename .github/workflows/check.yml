@@ -13,5 +13,5 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # 토픽 존재, 담당자 일치, 선행/후속 링크 유효성 검사
+      # 토픽 존재, 팀원 여부, 선행/후속 링크 유효성 검사
       - run: npm run check

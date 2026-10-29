@@ -1,12 +1,12 @@
-// 토픽·배정·노트 → site/data/*.json (페이지, 그래프, 에이전트가 함께 쓴다)
+// 토픽·노트 → site/data/*.json (페이지, 그래프, 에이전트가 함께 쓴다)
 // --check: PR 검증 모드. 규칙 위반이 있으면 실패한다.
 import { copyFile, mkdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { ROOT, loadTopics, loadTeam, loadSchedule, loadNotes, loadTossNotes, buildGraph, validate, collectSuggestions } from './lib/notes.mjs';
+import { ROOT, loadTopics, loadTeam, loadNotes, loadTossNotes, buildGraph, validate, collectSuggestions } from './lib/notes.mjs';
 
-const [topicsFile, team, schedule, notes, toss] = await Promise.all([loadTopics(), loadTeam(), loadSchedule(), loadNotes(), loadTossNotes()]);
-const graph = buildGraph(topicsFile, schedule, notes);
-const errors = validate(graph, notes);
+const [topicsFile, team, notes, toss] = await Promise.all([loadTopics(), loadTeam(), loadNotes(), loadTossNotes()]);
+const graph = buildGraph(topicsFile, notes);
+const errors = validate(graph, notes, team.members);
 
 const out = join(ROOT, 'site/data');
 await mkdir(join(out, 'viz'), { recursive: true });
@@ -45,7 +45,7 @@ const write = (name, data) => writeFile(join(out, name), JSON.stringify(data, nu
 await write('notes.json', notes);
 await write('graph.json', { categories: topicsFile.categories.map(({ id, name }) => ({ id, name })), ...graph });
 await write('suggestions.json', collectSuggestions(topicsFile, notes));
-await write('schedule.json', { members: team.members, sessions: schedule });
+await write('team.json', { members: team.members });
 await write('toss-notes.json', { members: tossMembers, notes: toss.notes.filter((n) => n.member), attachments });
 
 const studied = graph.topics.filter((t) => t.studied).length;

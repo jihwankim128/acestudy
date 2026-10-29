@@ -1,7 +1,7 @@
 // main 머지 후 CI에서 노트·토픽·엣지를 Firestore 에 동기화한다. (FIREBASE_SERVICE_ACCOUNT = 서비스 계정 JSON)
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { loadTopics, loadSchedule, loadNotes, buildGraph } from './lib/notes.mjs';
+import { loadTopics, loadNotes, buildGraph } from './lib/notes.mjs';
 
 const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
 if (!raw) {
@@ -13,7 +13,7 @@ initializeApp({ credential: cert(JSON.parse(raw)) });
 const db = getFirestore();
 
 const notes = await loadNotes();
-const { topics, edges } = buildGraph(await loadTopics(), await loadSchedule(), notes);
+const { topics, edges } = buildGraph(await loadTopics(), notes);
 
 const writer = db.bulkWriter();
 for (const n of notes) writer.set(db.collection('notes').doc(n.topic), { ...n, syncedAt: FieldValue.serverTimestamp() });

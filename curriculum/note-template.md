@@ -1,7 +1,7 @@
 ---
 topic: os.page-cache              # curriculum/topics.yaml 의 id (파일명과 동일)
 title: 페이지 캐시와 fsync
-author: your-github-id            # 배정된 담당자
+author: your-github-id            # 학습한 사람 (curriculum/team.yaml 팀원)
 date: 2026-10-08
 # ── 그래프 링크: PR 전에 DB에 쌓인 노트를 보고 채운다 (아직 학습 안 된 토픽도 OK) ──
 prerequisites:                    # 이 토픽을 이해하려면 먼저 알아야 하는 토픽

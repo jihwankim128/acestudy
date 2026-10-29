@@ -1,6 +1,8 @@
-# 팀원(GitHub 아이디)과 랜덤 배정 시드. 시드를 바꾸지 않으면 배정은 항상 같다.
+# 팀원(GitHub 아이디). 토픽은 미리 배정하지 않는다.
+# 팀원이 학습해서 노트를 올린 토픽에만 그 사람이 연결된다.
 members:
   - jihwankim128
   - simhokyung
   - JYL35
-seed: acestudy-2026
+  - Huiyeongkim
+  - alstj2384

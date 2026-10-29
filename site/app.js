@@ -2,7 +2,7 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const load = (f) => fetch(`/data/${f}`).then((r) => r.json());
 
-const [graph, notes, schedule] = await Promise.all([load('graph.json'), load('notes.json'), load('schedule.json')]);
+const [graph, notes, team] = await Promise.all([load('graph.json'), load('notes.json'), load('team.json')]);
 const topicById = new Map(graph.topics.map((t) => [t.id, t]));
 const noteById = new Map(notes.map((n) => [n.topic, n]));
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -46,14 +46,10 @@ function renderProgress() {
         <ul>${c.items.map((t) => {
           const n = noteById.get(t.id);
           return `<li class="${t.studied ? 'done' : ''}"><a href="#/topic/${t.id}"><span class="check">${t.studied ? '✓' : '○'}</span>${esc(t.title)}</a>
-            <span class="muted small">${t.studied ? `${esc(n?.author ?? '')} · ${esc(n?.date ?? '')}` : `${esc(t.owner ?? '')} · 세션 ${t.session ?? '-'}`}</span></li>`;
+            <span class="muted small">${t.studied ? `${esc(n?.author ?? '')} · ${esc(n?.date ?? '')}` : '미진행'}</span></li>`;
         }).join('')}</ul>
       </section>`).join('')}</div>`;
-  $('#links').innerHTML = `<h4>팀원</h4>${schedule.members.map((m) => {
-    const mine = graph.topics.filter((t) => t.owner === m);
-    const done = mine.filter((t) => t.studied).length;
-    return `<div class="side-member"><span>${esc(m)}</span><span class="muted small">${done}/${mine.length}</span>${meter(mine.length ? (done / mine.length) * 100 : 0, css('--accent'))}</div>`;
-  }).join('')}`;
+  $('#links').innerHTML = `<h4>팀원별 학습</h4>${memberStats().map(({ m, done, max }) => `<a class="side-member" href="#/team/${encodeURIComponent(m)}"><span>${esc(m)}</span><span class="muted small">${done}개</span>${meter(max ? (done / max) * 100 : 0, css('--accent'))}</a>`).join('')}`;
 }
 
 // ── 그래프 ──
@@ -126,24 +122,29 @@ function renderGraph() {
 }
 addEventListener('resize', () => fg && renderGraph());
 
-// ── 배정표 ──
-function renderSchedule() {
-  const { members, sessions } = schedule;
-  const progress = members.map((m) => {
-    const mine = graph.topics.filter((t) => t.owner === m);
-    const done = mine.filter((t) => t.studied).length;
-    return `<div class="member"><b>${esc(m)}</b><span class="bar"><i style="width:${mine.length ? (done / mine.length) * 100 : 0}%"></i></span><span class="muted">${done}/${mine.length}</span></div>`;
-  }).join('');
-  $('#schedule-view').innerHTML = `<h1>배정표</h1>
-    <p class="muted">세션마다 같은 카테고리 안에서 서로 다른 토픽을 랜덤 배정 (토픽당 10~20분)</p>
-    <div class="members">${progress}</div>
-    <table><thead><tr><th>#</th><th>카테고리</th>${members.map((m) => `<th>${esc(m)}</th>`).join('')}</tr></thead>
-    <tbody>${sessions.map((s) => `<tr><td>${s.session}</td>
-      <td><span class="dot" style="--c:${catColor(s.category)}"></span>${esc(graph.categories.find((c) => c.id === s.category)?.name ?? '혼합')}</td>
-      ${members.map((m) => {
-        const t = topicById.get(s.assignments[m]);
-        return `<td>${t ? `<a class="${t.studied ? 'done' : ''}" href="#/topic/${t.id}">${t.studied ? '✓ ' : ''}${esc(t.title)}</a>` : ''}</td>`;
-      }).join('')}</tr>`).join('')}</tbody></table>`;
+// ── 팀원 ──
+// 토픽은 미리 배정하지 않는다. 팀원이 학습해 노트를 올린 토픽만 그 사람에게 연결된다.
+function memberStats() {
+  const stats = team.members.map((m) => ({ m, done: graph.topics.filter((t) => t.owner === m).length }));
+  const max = Math.max(1, ...stats.map((s) => s.done));
+  return stats.map((s) => ({ ...s, max }));
+}
+
+function renderTeam(focus) {
+  $('#team-view').innerHTML = `<h1>팀원</h1>
+    <p class="muted">토픽은 미리 배정하지 않아요. <code>/study</code>로 학습해 노트를 올린 토픽만 그 사람에게 연결됩니다.</p>
+    ${memberStats().map(({ m, done }) => {
+      const mine = graph.topics.filter((t) => t.owner === m)
+        .sort((a, b) => String(noteById.get(b.id)?.date).localeCompare(String(noteById.get(a.id)?.date)));
+      return `<section class="card member-card ${m === focus ? 'focus' : ''}" id="member-${esc(m)}">
+        <header><b>${esc(m)}</b><span class="count">${done}개 학습</span></header>
+        ${mine.length ? `<ul>${mine.map((t) => `<li class="done"><a href="#/topic/${t.id}"><span class="dot" style="--c:${catColor(t.category)}"></span>${esc(t.title)}</a>
+          <span class="muted small">${esc(t.categoryName)} · ${esc(noteById.get(t.id)?.date ?? '')}</span></li>`).join('')}</ul>`
+          : '<p class="muted small">아직 학습한 토픽이 없어요.</p>'}
+      </section>`;
+    }).join('')}`;
+  $('#links').innerHTML = '';
+  if (focus) document.getElementById(`member-${focus}`)?.scrollIntoView({ block: 'start' });
 }
 
 // ── 노트 ──
@@ -160,12 +161,11 @@ function renderTopic(id) {
     <div class="crumb">${esc(t.categoryName)} / ${esc(t.id)}</div>
     <h1>${esc(t.title)}</h1>
     <div class="props">
-      <span>담당 <b>${esc(t.owner ?? '-')}</b></span><span>세션 <b>${t.session ?? '-'}</b></span>
-      ${n ? `<span>작성 <b>${esc(n.date)}</b></span>` : '<span class="pending">학습 전</span>'}
+      ${n ? `<span>학습 <b>${esc(t.owner)}</b></span><span>작성 <b>${esc(n.date)}</b></span>` : '<span class="pending">미진행</span>'}
     </div>
     <blockquote>백엔드 관점 — ${esc(t.hook)}</blockquote>
     ${n?.vizUrl ? `<figure class="viz"><iframe src="${n.vizUrl}" sandbox="allow-scripts" loading="lazy" title="${esc(t.title)} 시각화"></iframe></figure>` : ''}
-    ${n ? marked.parse(wiki(n.body)) : '<p class="muted">아직 노트가 없어요. 담당자가 <code>/study</code> 로 학습하면 채워집니다.</p>'}
+    ${n ? marked.parse(wiki(n.body)) : '<p class="muted">아직 아무도 학습하지 않았어요. 누군가 <code>/study</code>로 학습하면 그 사람이 이 토픽에 연결됩니다.</p>'}
     ${n?.quiz?.length ? `<h3>복습 퀴즈</h3>${n.quiz.map((q) => `<details class="quiz">
       <summary>${q.level === 'interview' ? '<span class="tag">면접</span>' : ''}${esc(q.q)}</summary>
       <p>${esc(q.a)}</p></details>`).join('')}` : ''}
@@ -193,7 +193,7 @@ function route() {
   document.querySelectorAll('.views a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
   document.querySelectorAll('.tree .file').forEach((a) => a.classList.toggle('active', a.dataset.id === arg));
   if (view === 'topic') renderTopic(decodeURIComponent(arg));
-  else if (view === 'schedule') { $('#links').innerHTML = ''; renderSchedule(); }
+  else if (view === 'team') renderTeam(arg ? decodeURIComponent(arg) : null);
   else if (view === 'progress') renderProgress();
   else { $('#links').innerHTML = `<h4>범례</h4><p class="muted small">노드 크기 = 연결 수<br>채워진 노드 = 학습 완료<br>빈 노드 = 학습 전</p>`; requestAnimationFrame(renderGraph); }
 }
