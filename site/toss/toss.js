@@ -1,27 +1,14 @@
 // Toss 스터디: CS 스터디와 같은 3단 구조(사이드바 문항 트리, 본문, 오른쪽 제출 이력)
 // 제출 기록은 Firestore toss_submissions 에 { qid, name, content, createdAt } 으로 쌓인다.
-import { CODING, QUIZ, DESIGN, CONCEPT } from '/toss/questions.js';
+import { GROUPS, ORDER, byId, titleOf, pad } from '/toss/groups.js';
+import { loadNotes, aboutQuestion, noteHref } from '/toss/notes.js';
 
 const FIREBASE = 'https://www.gstatic.com/firebasejs/10.12.2';
 const COLLECTION = 'toss_submissions';
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const pad = (n) => String(n).padStart(2, '0');
-const plain = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
 const meter = (pct, color) => `<span class="meter"><i style="width:${pct}%;background:${color}"></i></span>`;
-
-// 시험 시간 배분(주관식 5문항 25분, 서술형 2문항 30분)에 맞춘 분류.
-// 주관식은 문항당 5분짜리 짧은 서술이 본체이고, 키워드는 용어·숫자형 대비용이다.
-const GROUPS = [
-  { id: 'coding', name: '코딩', label: '코딩', color: '--c-arch', kind: 'coding', items: CODING },
-  { id: 'short', name: '주관식 · 서술', label: '주관식', color: '--c-os', kind: 'text', items: CONCEPT },
-  { id: 'keyword', name: '주관식 · 키워드', label: '키워드', color: '--c-net', kind: 'quiz', items: QUIZ },
-  { id: 'essay', name: '서술형 · 설계', label: '서술형', color: '--c-db', kind: 'text', items: DESIGN },
-];
-const ORDER = GROUPS.flatMap((g) => g.items.map((item, i) => ({ item, group: g, no: i + 1 })));
-const byId = new Map(ORDER.map((e) => [e.item.id, e]));
-const titleOf = ({ item, group }) => (group.kind === 'coding' ? item.title : plain(item.q));
 
 // ---------- 로컬 보관: 이름, 작성 중인 답안 ----------
 const local = {
@@ -241,11 +228,17 @@ function membersHtml() {
   }).join('');
 }
 
+// 이 문항을 [[c1]] 처럼 링크한 Toss 노트 (Toss 노트 페이지로 이동)
+const noteLinks = (list) => list.map((n) => `<a class="file" href="${noteHref(n)}"><span class="check">◇</span>
+  <span class="label">${esc(n.title)}</span><span class="owner">${esc(n.member)}</span></a>`).join('');
+
 let route = 'overview';
 function refreshSide() {
   const side = $('#side');
   if (route === 'question') {
-    side.innerHTML = `<h4>제출 이력<span class="n">${subsState === 'ready' ? countOf(current) : ''}</span></h4>${historyHtml(current)}`;
+    const about = aboutQuestion(current);
+    side.innerHTML = `${about.length ? `<h4>이 문항을 다룬 노트<span class="n">${about.length}</span></h4>${noteLinks(about)}` : ''}
+      <h4>제출 이력<span class="n">${subsState === 'ready' ? countOf(current) : ''}</span></h4>${historyHtml(current)}`;
   } else if (route === 'mock') {
     if (side.firstChild !== mockSide) side.replaceChildren(mockSide);
     mockSide.querySelector('#mock-list').innerHTML = paper.map((e) =>
@@ -379,6 +372,8 @@ window.addEventListener('hashchange', go);
 $('#bank-total').textContent = ORDER.length;
 drawPaper();
 go();
+
+loadNotes().then(() => { if (route === 'question') refreshSide(); });
 
 connect()
   .then(() => { subsState = 'ready'; })

@@ -112,6 +112,7 @@ curriculum/note-template.md  노트 템플릿
 curriculum/viz-template.html 시각화 템플릿
 notes/<category>/<id>.md     학습 노트 — 이 폴더를 옵시디언 vault 로 열 수 있음
 notes/<category>/<id>.viz.html  노트별 시각화
+toss-notes/<github-id>/      Toss 학습 노트. 팀원마다 자기 폴더를 옵시디언 vault 로 연다 (/toss-notes 에 표시)
 .agents/skills/study/        학습 세션 스킬 (Codex / Claude Code 공용)
 .agents/skills/expand/       토픽 풀 확장 스킬
 .agents/skills/review/       팀원 학습 PR 리뷰 스킬

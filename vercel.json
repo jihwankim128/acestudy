@@ -4,6 +4,7 @@
   "outputDirectory": "site",
   "rewrites": [
     { "source": "/toss", "destination": "/toss/index.html" },
+    { "source": "/toss-notes", "destination": "/toss-notes/index.html" },
     { "source": "/api/graph", "destination": "/data/graph.json" },
     { "source": "/api/notes", "destination": "/data/notes.json" },
     { "source": "/api/schedule", "destination": "/data/schedule.json" }

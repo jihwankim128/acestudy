@@ -7,3 +7,7 @@ site/data/
 .vercel
 .env*
 .wrangler/
+
+# 옵시디언 설정·휴지통
+.obsidian/
+.trash/
