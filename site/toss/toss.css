@@ -5,7 +5,12 @@
 }
 [hidden] { display: none !important; }
 body[data-view="overview"] #overview-view, body[data-view="question"] #question-view,
-body[data-view="mock"] #mock-view, body[data-view="records"] #records-view { display: block; }
+body[data-view="mock"] #mock-view, body[data-view="records"] #records-view,
+body[data-view="notes"] #notes-view, body[data-view="note"] #notes-view { display: block; }
+/* Toss 노트: 팀원 탭은 아이디가 길어서 세로로 쌓는다 */
+.member-tabs { flex-direction: column; }
+.member-tabs a { display: flex; }
+.member-tabs .n { margin-left: auto; font-size: 11px; opacity: .7; }
 
 /* 사이드바 문항 트리: 질문 문장이 길어서 한 줄로 자른다 */
 .tree .file .label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -132,7 +137,37 @@ select { width: auto; padding: 5px 8px; }
 .sources { padding-left: 18px; display: grid; gap: 3px; font-size: 13.5px; }
 .sources a { color: var(--accent); }
 
+/* 학습 노트 (옵시디언 md) */
+.note-list { display: grid; gap: 8px; }
+.note-card { display: grid; gap: 4px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; background: var(--bg-side); }
+.note-card:hover { border-color: var(--accent); }
+.md-note { font-size: 15px; overflow-wrap: break-word; }
+.md-note h2 { border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.md-note h3 { font-size: 16px; margin: 24px 0 8px; }
+.md-note h4 { font-size: 14px; margin: 18px 0 6px; }
+.md-note ul, .md-note ol { padding-left: 22px; }
+.md-note li + li { margin-top: 4px; }
+.md-note img { max-width: 100%; height: auto; border-radius: 8px; }
+.md-note hr { border: 0; border-top: 1px solid var(--line); margin: 28px 0; }
+.md-note :not(pre) > code { background: var(--bg-side); padding: 1px 5px; border-radius: 4px; }
+.md-note table { margin: 0 0 16px; }
+.md-note th { background: var(--bg-side); }
+.md-note mark { background: color-mix(in srgb, var(--guess) 35%, transparent); color: inherit; padding: 0 2px; border-radius: 3px; }
+.md-note .mermaid { margin: 0 0 18px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; overflow-x: auto; text-align: center; }
+.callout { --cc: var(--accent); margin: 0 0 18px; border: 1px solid color-mix(in srgb, var(--cc) 40%, var(--line)); border-left: 3px solid var(--cc); border-radius: 0 8px 8px 0; background: color-mix(in srgb, var(--cc) 8%, var(--bg)); }
+.callout-title { font-weight: 600; color: var(--cc); padding: 8px 14px; }
+details.callout > summary { cursor: pointer; }
+.callout-body { padding: 0 14px 4px; }
+.callout-body > :first-child { margin-top: 0; }
+.callout-body > :last-child { margin-bottom: 8px; }
+.callout[data-callout="info"], .callout[data-callout="note"], .callout[data-callout="abstract"], .callout[data-callout="summary"] { --cc: var(--fact); }
+.callout[data-callout="question"], .callout[data-callout="warning"], .callout[data-callout="caution"], .callout[data-callout="help"] { --cc: var(--guess); }
+.callout[data-callout="danger"], .callout[data-callout="failure"], .callout[data-callout="fail"], .callout[data-callout="bug"], .callout[data-callout="error"] { --cc: var(--danger); }
+.callout[data-callout="tip"], .callout[data-callout="success"], .callout[data-callout="check"], .callout[data-callout="done"] { --cc: var(--c-net); }
+
 @media (max-width: 900px) {
+  /* 본문이 길면 높이 고정 그리드가 사이드바를 눌러 탭이 가려진다 */
+  body { height: auto; }
   .links { display: block; max-height: none; }
   .workspace { height: auto; overflow: visible; }
   .view.doc { height: auto; overflow: visible; }

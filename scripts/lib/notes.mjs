@@ -139,3 +139,40 @@ export function collectSuggestions({ categories }, notes) {
   }
   return [...byTitle.values()].sort((a, b) => b.from.length - a.from.length);
 }
+
+// toss-notes/<github-id>/**/*.md — Toss 학습 노트. 팀원마다 자기 폴더를 옵시디언 vault 로 연다.
+// 팀 토픽 노트 규칙은 적용하지 않고, 노트 이름(확장자 뺀 파일 이름)은 팀원 폴더 안에서만 겹치지 않으면 된다.
+const ATTACHMENT = /\.(png|jpe?g|gif|svg|webp)$/i;
+export async function loadTossNotes() {
+  const dir = join(ROOT, 'toss-notes');
+  const notes = [];
+  const files = [];
+  const folders = [];
+  if (!existsSync(dir)) return { notes, files, folders };
+  for (const ent of await readdir(dir, { withFileTypes: true, recursive: true })) {
+    const path = join(ent.parentPath ?? ent.path, ent.name);
+    const parts = relative(dir, path).split('/');
+    if (parts.some((p) => p.startsWith('.'))) continue;
+    if (ent.isDirectory() && parts.length === 1) folders.push(ent.name);
+    if (!ent.isFile()) continue;
+    if (ATTACHMENT.test(ent.name)) { files.push(parts.join('/')); continue; }
+    if (!ent.name.endsWith('.md')) continue;
+    const { meta, body } = splitFrontmatter(await readFile(path, 'utf8'));
+    const name = ent.name.replace(/\.md$/, '');
+    notes.push({
+      member: parts.length > 1 ? parts[0] : null,
+      folder: parts.slice(1, -1).join('/'),
+      name,
+      path: relative(ROOT, path),
+      title: meta.title ?? name,
+      date: meta.date ? String(meta.date) : null,
+      tags: [meta.tags ?? []].flat().map(String),
+      // 코드 블록·인라인 코드 안의 [[...]] 는 예시라서 링크로 세지 않는다
+      links: [...new Set([...body.replace(/```[\s\S]*?```|`[^`\n]*`/g, '').matchAll(/!?\[\[([^\]|#]+)/g)].map((m) => m[1].trim()))],
+      body,
+    });
+  }
+  notes.sort((a, b) => a.path.localeCompare(b.path, 'ko'));
+  folders.sort();
+  return { notes, files, folders };
+}
