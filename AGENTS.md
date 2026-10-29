@@ -2,7 +2,7 @@
 
 팀원들이 각자 AI 에이전트와 CS를 학습하고, 결과를 **하나의 지식 그래프**로 쌓는 저장소다.
 에이전트는 이 문서를 먼저 읽고 아래 절차를 따른다.
-스킬: 학습 세션 `study`, 토픽 확장 `expand`, PR 리뷰 `review` (`.agents/skills/`). Codex는 `$study`, Claude Code는 `/study` 처럼 실행한다.
+스킬: 학습 세션 `study`, 토픽 확장 `expand`, PR 리뷰 `review`, Toss 노트 정리 `toss-note` (`.agents/skills/`). Codex는 `$study`, Claude Code는 `/study` 처럼 실행한다.
 (`.claude/skills` 는 `.agents/skills` 를 가리키는 심볼릭 링크라서 두 에이전트가 같은 스킬을 쓴다.)
 
 ## 페르소나
@@ -116,6 +116,7 @@ toss-notes/<github-id>/      Toss 학습 노트. 팀원마다 자기 폴더를 �
 .agents/skills/study/        학습 세션 스킬 (Codex / Claude Code 공용)
 .agents/skills/expand/       토픽 풀 확장 스킬
 .agents/skills/review/       팀원 학습 PR 리뷰 스킬
+.agents/skills/toss-note/    Toss 학습 노트 정리 스킬 (처음 쓰면 학습 범위부터 정해 학습 지도를 만든다)
 scripts/                     build-index / context / sync-firestore
 site/ + vercel.json          Vercel 페이지 + /api/*
 ```
